@@ -29,6 +29,7 @@ import {
 import {
   initAuth,
   googleSignIn,
+  googleSignInRedirect,
   logoutGoogle,
   getAccessToken
 } from '../services/googleAuth';
@@ -42,6 +43,16 @@ import {
   appendIngredientRow,
   appendWasteRow,
 } from '../services/googleSheetsService';
+import {
+  AppsScriptConfig,
+  getAppsScriptConfig,
+  saveAppsScriptConfig,
+  syncAllToAppsScript,
+  fetchAllFromAppsScript,
+  testAppsScriptConnection,
+  appendOrderToAppsScript,
+  APPS_SCRIPT_TEMPLATE_CODE,
+} from '../services/appsScriptService';
 
 // Predefined Units
 const INITIAL_UNITS: Unit[] = [
@@ -1153,13 +1164,14 @@ interface BakeryContextType {
   activeProductionsCount: number;
   pendingOrdersCount: number;
 
-  // Google Sheets Integration
+  // Google Sheets Direct OAuth Integration
   googleUser: User | null;
   googleAccessToken: string | null;
   googleSheetsConfig: GoogleSheetsConfig;
   isGoogleLoading: boolean;
   isGoogleSyncing: boolean;
   signInWithGoogle: () => Promise<{ success: boolean; message?: string }>;
+  signInWithGoogleRedirect: () => Promise<void>;
   signOutFromGoogle: () => Promise<void>;
   createBakeryGoogleSheet: (title?: string) => Promise<{ success: boolean; spreadsheetUrl?: string; message?: string }>;
   connectGoogleSheetById: (spreadsheetId: string) => Promise<{ success: boolean; message?: string }>;
@@ -1167,6 +1179,15 @@ interface BakeryContextType {
   loadDataFromGoogleSheets: () => Promise<{ success: boolean; message?: string; count?: { ingredients: number; orders: number; productions: number } }>;
   disconnectGoogleSheet: () => void;
   updateGoogleSheetsConfig: (patch: Partial<GoogleSheetsConfig>) => void;
+
+  // Google Apps Script Web App Integration (No Login / No Firebase Required)
+  appsScriptConfig: AppsScriptConfig;
+  isAppsScriptSyncing: boolean;
+  updateAppsScriptConfig: (patch: Partial<AppsScriptConfig>) => void;
+  testAppsScript: () => Promise<{ success: boolean; message: string; spreadsheetUrl?: string; spreadsheetTitle?: string }>;
+  syncNowToAppsScript: () => Promise<{ success: boolean; message: string }>;
+  loadDataFromAppsScript: () => Promise<{ success: boolean; message: string; count?: { ingredients: number; products: number } }>;
+  appsScriptTemplateCode: string;
 }
 
 const BakeryContext = createContext<BakeryContextType | null>(null);
@@ -1292,6 +1313,10 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           lastSyncedAt: null,
         };
   });
+
+  // Google Apps Script state
+  const [appsScriptConfig, setAppsScriptConfig] = useState<AppsScriptConfig>(() => getAppsScriptConfig());
+  const [isAppsScriptSyncing, setIsAppsScriptSyncing] = useState<boolean>(false);
 
   // Listen to Google Auth State on Mount
   useEffect(() => {
@@ -1899,6 +1924,13 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     }
 
+    // Auto-sync new order to Google Apps Script Web App if configured
+    if (appsScriptConfig.webAppUrl && appsScriptConfig.autoSyncOrders) {
+      appendOrderToAppsScript(appsScriptConfig.webAppUrl, newOrder).catch(err => {
+        console.warn('Apps Script Order Auto-sync notice:', err);
+      });
+    }
+
     return newOrder;
   };
 
@@ -2116,6 +2148,18 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return { success: false, message: msg };
     } finally {
       setIsGoogleLoading(false);
+    }
+  };
+
+  const signInWithGoogleRedirect = async (): Promise<void> => {
+    try {
+      setIsGoogleLoading(true);
+      await googleSignInRedirect();
+    } catch (err: any) {
+      console.error('Google redirect error:', err);
+      logAction('SISTEM', 'GOOGLE LOGIN GAGAL', err?.message || 'Redirect Google gagal');
+      setIsGoogleLoading(false);
+      throw err;
     }
   };
 
@@ -2347,6 +2391,117 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setGoogleSheetsConfig(prev => ({ ...prev, ...patch }));
   };
 
+  // Google Apps Script Action Handlers
+  const updateAppsScriptConfig = (patch: Partial<AppsScriptConfig>) => {
+    const updated = saveAppsScriptConfig(patch);
+    setAppsScriptConfig(updated);
+  };
+
+  const testAppsScript = async (): Promise<{
+    success: boolean;
+    message: string;
+    spreadsheetUrl?: string;
+    spreadsheetTitle?: string;
+  }> => {
+    if (!appsScriptConfig.webAppUrl) {
+      return { success: false, message: 'Harap masukkan URL Web App Google Apps Script terlebih dahulu.' };
+    }
+    try {
+      setIsAppsScriptSyncing(true);
+      const res = await testAppsScriptConnection(appsScriptConfig.webAppUrl);
+      if (res.spreadsheetTitle || res.spreadsheetUrl) {
+        updateAppsScriptConfig({
+          spreadsheetTitle: res.spreadsheetTitle,
+          spreadsheetUrl: res.spreadsheetUrl,
+        });
+      }
+      logAction('SISTEM', 'TEST APPS SCRIPT', res.message);
+      return res;
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Koneksi ke Apps Script gagal.' };
+    } finally {
+      setIsAppsScriptSyncing(false);
+    }
+  };
+
+  const syncNowToAppsScript = async (): Promise<{ success: boolean; message: string }> => {
+    if (!appsScriptConfig.webAppUrl) {
+      return { success: false, message: 'Harap masukkan URL Web App Google Apps Script terlebih dahulu.' };
+    }
+    try {
+      setIsAppsScriptSyncing(true);
+      const statePayload = {
+        businessProfile,
+        ingredients,
+        recipes,
+        products,
+        orders,
+        productions,
+        customers,
+        wasteRecords: wastes,
+      };
+      const res = await syncAllToAppsScript(appsScriptConfig.webAppUrl, statePayload);
+      const now = new Date().toLocaleString('id-ID');
+      updateAppsScriptConfig({
+        lastSyncedAt: now,
+        spreadsheetUrl: res.spreadsheetUrl || appsScriptConfig.spreadsheetUrl,
+      });
+      logAction('SISTEM', 'SINKRONISASI APPS SCRIPT', 'Semua data disinkronkan ke Google Sheets via Apps Script');
+      return { success: true, message: res.message };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Gagal sinkronisasi data ke Apps Script.' };
+    } finally {
+      setIsAppsScriptSyncing(false);
+    }
+  };
+
+  const loadDataFromAppsScript = async (): Promise<{
+    success: boolean;
+    message: string;
+    count?: { ingredients: number; products: number };
+  }> => {
+    if (!appsScriptConfig.webAppUrl) {
+      return { success: false, message: 'Harap masukkan URL Web App Google Apps Script terlebih dahulu.' };
+    }
+    try {
+      setIsAppsScriptSyncing(true);
+      const res = await fetchAllFromAppsScript(appsScriptConfig.webAppUrl);
+      let ingCount = 0;
+      let prodCount = 0;
+
+      if (res.data?.ingredients && res.data.ingredients.length > 0) {
+        setIngredients(res.data.ingredients);
+        ingCount = res.data.ingredients.length;
+      }
+      if (res.data?.products && res.data.products.length > 0) {
+        setProducts(res.data.products);
+        prodCount = res.data.products.length;
+      }
+
+      const now = new Date().toLocaleString('id-ID');
+      updateAppsScriptConfig({
+        lastSyncedAt: now,
+        spreadsheetUrl: res.spreadsheetUrl || appsScriptConfig.spreadsheetUrl,
+      });
+
+      logAction(
+        'SISTEM',
+        'BACA APPS SCRIPT',
+        `Memuat ${ingCount} bahan baku & ${prodCount} produk dari Google Sheets via Apps Script`
+      );
+
+      return {
+        success: true,
+        message: `Berhasil membaca data dari Google Sheets (${ingCount} bahan baku, ${prodCount} produk katalog).`,
+        count: { ingredients: ingCount, products: prodCount },
+      };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Gagal memuat data dari Apps Script.' };
+    } finally {
+      setIsAppsScriptSyncing(false);
+    }
+  };
+
   return (
     <BakeryContext.Provider
       value={{
@@ -2416,6 +2571,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isGoogleLoading,
         isGoogleSyncing,
         signInWithGoogle,
+        signInWithGoogleRedirect,
         signOutFromGoogle,
         createBakeryGoogleSheet,
         connectGoogleSheetById,
@@ -2423,6 +2579,13 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         loadDataFromGoogleSheets,
         disconnectGoogleSheet,
         updateGoogleSheetsConfig,
+        appsScriptConfig,
+        isAppsScriptSyncing,
+        updateAppsScriptConfig,
+        testAppsScript,
+        syncNowToAppsScript,
+        loadDataFromAppsScript,
+        appsScriptTemplateCode: APPS_SCRIPT_TEMPLATE_CODE,
       }}
     >
       {children}

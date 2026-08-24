@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileSpreadsheet,
   CheckCircle2,
@@ -21,16 +21,43 @@ import {
   HelpCircle,
   ShieldAlert,
   Info,
+  KeyRound,
+  Check,
+  RotateCcw,
+  Sliders,
+  Copy,
+  Code2,
+  Zap,
+  Globe,
+  Radio,
 } from 'lucide-react';
 import { useBakery } from '../../context/BakeryContext';
+import {
+  getCustomFirebaseConfig,
+  saveCustomFirebaseConfig,
+  isUsingCustomFirebase,
+  setDirectAccessToken,
+  FirebaseAppConfig,
+} from '../../services/googleAuth';
 
 export const GoogleSheetsManager: React.FC = () => {
   const {
+    // Apps Script
+    appsScriptConfig,
+    isAppsScriptSyncing,
+    updateAppsScriptConfig,
+    testAppsScript,
+    syncNowToAppsScript,
+    loadDataFromAppsScript,
+    appsScriptTemplateCode,
+
+    // Google OAuth
     googleUser,
     googleSheetsConfig,
     isGoogleLoading,
     isGoogleSyncing,
     signInWithGoogle,
+    signInWithGoogleRedirect,
     signOutFromGoogle,
     createBakeryGoogleSheet,
     connectGoogleSheetById,
@@ -38,6 +65,8 @@ export const GoogleSheetsManager: React.FC = () => {
     loadDataFromGoogleSheets,
     disconnectGoogleSheet,
     updateGoogleSheetsConfig,
+
+    // Business Data
     businessProfile,
     ingredients,
     orders,
@@ -46,20 +75,66 @@ export const GoogleSheetsManager: React.FC = () => {
     importDataJson,
   } = useBakery();
 
+  // Top Level Tab: 'appscript' (Default & Recommended) vs 'oauth'
+  const [activeTab, setActiveTab] = useState<'appscript' | 'oauth'>('appscript');
+
+  // Apps Script Form State
+  const [webAppUrlInput, setWebAppUrlInput] = useState(appsScriptConfig.webAppUrl || '');
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [showCodePreview, setShowCodePreview] = useState(false);
+
+  // OAuth Form State
   const [customTitle, setCustomTitle] = useState(
     `${businessProfile.name} - Database Master (${new Date().getFullYear()})`
   );
   const [existingSheetInput, setExistingSheetInput] = useState('');
-  const [syncStatusMsg, setSyncStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeMode, setActiveMode] = useState<'create' | 'connect'>('create');
-  const [showPopupHelp, setShowPopupHelp] = useState(false);
+  const [oauthMode, setOauthMode] = useState<'create' | 'connect'>('create');
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
+  // Common Feedback
+  const [syncStatusMsg, setSyncStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Custom Firebase State
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [authDomainInput, setAuthDomainInput] = useState('');
+  const [projectIdInput, setProjectIdInput] = useState('');
+  const [appIdInput, setAppIdInput] = useState('');
+  const [jsonConfigInput, setJsonConfigInput] = useState('');
+  const [directTokenInput, setDirectTokenInput] = useState('');
+  const [isCustomActive, setIsCustomActive] = useState(false);
   const [copiedDomain, setCopiedDomain] = useState(false);
 
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'pusakabakery.vercel.app';
-  const isUnauthorizedDomain = syncStatusMsg?.text?.includes('Authorized Domains') || syncStatusMsg?.text?.includes('unauthorized-domain');
-  const firebaseConsoleAuthUrl = 'https://console.firebase.google.com/project/gen-lang-client-0634373997/authentication/settings';
+  const isUnauthorizedDomain =
+    syncStatusMsg?.text?.includes('Authorized Domains') ||
+    syncStatusMsg?.text?.includes('unauthorized-domain') ||
+    syncStatusMsg?.text?.includes('Firebase Config');
+
+  useEffect(() => {
+    setWebAppUrlInput(appsScriptConfig.webAppUrl || '');
+  }, [appsScriptConfig.webAppUrl]);
+
+  useEffect(() => {
+    const custom = getCustomFirebaseConfig();
+    if (custom) {
+      setApiKeyInput(custom.apiKey || '');
+      setAuthDomainInput(custom.authDomain || '');
+      setProjectIdInput(custom.projectId || '');
+      setAppIdInput(custom.appId || '');
+      setIsCustomActive(true);
+    } else {
+      setIsCustomActive(false);
+    }
+  }, []);
+
+  const handleCopyCode = () => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(appsScriptTemplateCode);
+      setCopiedScript(true);
+      setTimeout(() => setCopiedScript(false), 2500);
+    }
+  };
 
   const handleCopyHostname = () => {
     if (navigator?.clipboard) {
@@ -75,80 +150,214 @@ export const GoogleSheetsManager: React.FC = () => {
     }
   };
 
+  // -------------------------------------------------------------
+  // APPS SCRIPT HANDLERS
+  // -------------------------------------------------------------
+  const handleSaveAppsScriptUrl = () => {
+    const trimmed = webAppUrlInput.trim();
+    if (!trimmed) {
+      updateAppsScriptConfig({ webAppUrl: '' });
+      setSyncStatusMsg({ type: 'success', text: 'URL Google Apps Script telah dihapus.' });
+      return;
+    }
+    if (!trimmed.startsWith('https://script.google.com/macros/s/')) {
+      setSyncStatusMsg({
+        type: 'error',
+        text: 'URL harus berformat: https://script.google.com/macros/s/.../exec',
+      });
+      return;
+    }
+    updateAppsScriptConfig({ webAppUrl: trimmed });
+    setSyncStatusMsg({ type: 'success', text: 'URL Web App berhasil disimpan! Silakan klik "Uji Koneksi".' });
+  };
+
+  const handleTestAppsScript = async () => {
+    setSyncStatusMsg(null);
+    const trimmed = webAppUrlInput.trim();
+    if (!trimmed) {
+      setSyncStatusMsg({ type: 'error', text: 'Silakan masukkan URL Web App Apps Script terlebih dahulu.' });
+      return;
+    }
+    updateAppsScriptConfig({ webAppUrl: trimmed });
+    const res = await testAppsScript();
+    if (res.success) {
+      setSyncStatusMsg({
+        type: 'success',
+        text: `✓ Sukses terhubung ke Spreadsheet: "${res.spreadsheetTitle || 'PUSAKA Bakery DB'}"!`,
+      });
+    } else {
+      setSyncStatusMsg({
+        type: 'error',
+        text: res.message || 'Koneksi gagal. Pastikan setting "Who has access" disetel "Anyone".',
+      });
+    }
+  };
+
+  const handlePushAppsScript = async () => {
+    setSyncStatusMsg(null);
+    if (!appsScriptConfig.webAppUrl) {
+      setSyncStatusMsg({ type: 'error', text: 'Harap simpan URL Web App Apps Script terlebih dahulu.' });
+      return;
+    }
+    const res = await syncNowToAppsScript();
+    if (res.success) {
+      setSyncStatusMsg({ type: 'success', text: '✓ Seluruh database berhasil dikirim & diperbarui di Google Sheets!' });
+    } else {
+      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal sinkronisasi data.' });
+    }
+  };
+
+  const handlePullAppsScript = async () => {
+    setSyncStatusMsg(null);
+    if (!appsScriptConfig.webAppUrl) {
+      setSyncStatusMsg({ type: 'error', text: 'Harap simpan URL Web App Apps Script terlebih dahulu.' });
+      return;
+    }
+    const res = await loadDataFromAppsScript();
+    if (res.success) {
+      setSyncStatusMsg({ type: 'success', text: res.message });
+    } else {
+      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal memuat data dari Apps Script.' });
+    }
+  };
+
+  // -------------------------------------------------------------
+  // OAUTH HANDLERS
+  // -------------------------------------------------------------
   const handleGoogleSignIn = async () => {
     setSyncStatusMsg(null);
     const res = await signInWithGoogle();
     if (res.success) {
       setSyncStatusMsg({ type: 'success', text: res.message || 'Berhasil login dengan Google.' });
-      setShowPopupHelp(false);
     } else {
       setSyncStatusMsg({
         type: 'error',
-        text: res.message || 'Gagal login. Pastikan popup tidak diblokir oleh browser.',
+        text: res.message || 'Gagal login. Pastikan popup tidak diblokir.',
       });
-      setShowPopupHelp(true);
     }
   };
 
-  const handleCreateSheet = async () => {
+  const handleGoogleSignInRedirect = async () => {
+    setSyncStatusMsg(null);
+    try {
+      await signInWithGoogleRedirect();
+    } catch (err: any) {
+      setSyncStatusMsg({
+        type: 'error',
+        text: err?.message || 'Gagal memulai redirect login.',
+      });
+    }
+  };
+
+  const handleCreateOAuthSheet = async () => {
     setSyncStatusMsg(null);
     const res = await createBakeryGoogleSheet(customTitle);
     if (res.success) {
-      setSyncStatusMsg({ type: 'success', text: res.message || 'Spreadsheet berhasil dibuat dan disinkronkan!' });
+      setSyncStatusMsg({ type: 'success', text: res.message || 'Spreadsheet berhasil dibuat!' });
     } else {
       setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal membuat spreadsheet.' });
     }
   };
 
-  const handleConnectSheet = async () => {
+  const handleConnectOAuthSheet = async () => {
     setSyncStatusMsg(null);
     if (!existingSheetInput.trim()) {
-      setSyncStatusMsg({ type: 'error', text: 'Silakan masukkan Spreadsheet ID atau Link URL.' });
+      setSyncStatusMsg({ type: 'error', text: 'Silakan masukkan Spreadsheet ID atau URL.' });
       return;
     }
-
-    // Extract ID if full URL pasted
     let id = existingSheetInput.trim();
     const match = id.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    if (match && match[1]) {
-      id = match[1];
-    }
+    if (match && match[1]) id = match[1];
 
     const res = await connectGoogleSheetById(id);
     if (res.success) {
       setSyncStatusMsg({ type: 'success', text: res.message || 'Berhasil terhubung ke spreadsheet!' });
       setExistingSheetInput('');
     } else {
-      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal menghubungkan ke spreadsheet.' });
+      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal menghubungkan.' });
     }
   };
 
-  const handleManualSync = async () => {
+  const handleManualOAuthSync = async () => {
     setSyncStatusMsg(null);
     const res = await syncNowToGoogleSheets();
     if (res.success) {
-      setSyncStatusMsg({ type: 'success', text: res.message || 'Sinkronisasi tulis ke Google Sheets berhasil!' });
+      setSyncStatusMsg({ type: 'success', text: 'Sinkronisasi ke Google Sheets berhasil!' });
     } else {
-      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal sinkronisasi data.' });
+      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal sinkronisasi.' });
     }
   };
 
-  const handleLoadFromSheets = async () => {
+  const handleLoadFromOAuthSheets = async () => {
     setSyncStatusMsg(null);
     const res = await loadDataFromGoogleSheets();
     if (res.success) {
-      setSyncStatusMsg({
-        type: 'success',
-        text: res.message || 'Data dari Google Sheets berhasil dimuat ke aplikasi!',
-      });
+      setSyncStatusMsg({ type: 'success', text: res.message || 'Data berhasil dimuat!' });
     } else {
-      setSyncStatusMsg({
-        type: 'error',
-        text: res.message || 'Gagal memuat data dari Google Sheets.',
-      });
+      setSyncStatusMsg({ type: 'error', text: res.message || 'Gagal memuat data.' });
     }
   };
 
+  const handleParseJsonConfig = () => {
+    try {
+      let cleaned = jsonConfigInput.trim();
+      if (cleaned.includes('const firebaseConfig =')) {
+        cleaned = cleaned.replace(/const\s+firebaseConfig\s*=\s*/, '').replace(/;$/, '');
+      }
+      const parsed = Function(`'use strict'; return (${cleaned})`)();
+      if (parsed.apiKey) setApiKeyInput(parsed.apiKey);
+      if (parsed.authDomain) setAuthDomainInput(parsed.authDomain);
+      if (parsed.projectId) setProjectIdInput(parsed.projectId);
+      if (parsed.appId) setAppIdInput(parsed.appId);
+      setSyncStatusMsg({ type: 'success', text: 'Konfigurasi Firebase berhasil diekstrak!' });
+    } catch {
+      setSyncStatusMsg({ type: 'error', text: 'Format JSON/JS Firebase tidak valid.' });
+    }
+  };
+
+  const handleSaveCustomFirebase = () => {
+    if (!apiKeyInput.trim() || !authDomainInput.trim() || !projectIdInput.trim()) {
+      setSyncStatusMsg({ type: 'error', text: 'Harap isi API Key, Auth Domain, dan Project ID.' });
+      return;
+    }
+    const config: FirebaseAppConfig = {
+      apiKey: apiKeyInput.trim(),
+      authDomain: authDomainInput.trim(),
+      projectId: projectIdInput.trim(),
+      appId: appIdInput.trim() || undefined,
+    };
+    saveCustomFirebaseConfig(config);
+    setIsCustomActive(true);
+    setSyncStatusMsg({ type: 'success', text: 'Firebase pribadi disimpan! Silakan coba login.' });
+    setShowConfigModal(false);
+  };
+
+  const handleResetToDefaultFirebase = () => {
+    saveCustomFirebaseConfig(null);
+    setApiKeyInput('');
+    setAuthDomainInput('');
+    setProjectIdInput('');
+    setAppIdInput('');
+    setJsonConfigInput('');
+    setIsCustomActive(false);
+    setSyncStatusMsg({ type: 'success', text: 'Kembali ke pengaturan Firebase sandbox bawaan.' });
+  };
+
+  const handleApplyDirectToken = () => {
+    if (!directTokenInput.trim()) {
+      setSyncStatusMsg({ type: 'error', text: 'Token akses tidak boleh kosong.' });
+      return;
+    }
+    setDirectAccessToken(directTokenInput.trim(), 'Akses Token Manual');
+    setSyncStatusMsg({ type: 'success', text: 'Token akses Google Sheets berhasil diterapkan!' });
+    setDirectTokenInput('');
+    setShowConfigModal(false);
+    window.location.reload();
+  };
+
+  // -------------------------------------------------------------
+  // BACKUP / RESTORE HANDLERS
+  // -------------------------------------------------------------
   const handleDownloadBackup = () => {
     const jsonStr = exportDataJson();
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -158,7 +367,7 @@ export const GoogleSheetsManager: React.FC = () => {
     a.download = `backup-${businessProfile.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setSyncStatusMsg({ type: 'success', text: 'File cadangan data sistem berhasil diunduh.' });
+    setSyncStatusMsg({ type: 'success', text: 'File cadangan JSON berhasil diunduh.' });
   };
 
   const handleUploadBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +383,7 @@ export const GoogleSheetsManager: React.FC = () => {
         } else {
           setSyncStatusMsg({ type: 'error', text: 'Format file cadangan tidak valid.' });
         }
-      } catch (err: any) {
+      } catch {
         setSyncStatusMsg({ type: 'error', text: 'Gagal membaca berkas cadangan.' });
       }
     };
@@ -182,102 +391,74 @@ export const GoogleSheetsManager: React.FC = () => {
     e.target.value = '';
   };
 
+  const isAppsScriptConnected = Boolean(appsScriptConfig.webAppUrl && appsScriptConfig.webAppUrl.length > 20);
+
   return (
     <div className="bg-stone-900 border border-stone-800 rounded-xl p-5 sm:p-6 text-stone-100 shadow-lg space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-stone-800">
+      {/* Header Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-800">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
             <FileSpreadsheet className="w-6 h-6" />
           </div>
           <div>
             <h3 className="text-base font-bold text-white flex items-center space-x-2">
-              <span>Integrasi Google Sheets Persisten</span>
-              {googleSheetsConfig.spreadsheetId && (
+              <span>Integrasi Google Sheets Database</span>
+              {isAppsScriptConnected && activeTab === 'appscript' && (
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>TERHUBUNG</span>
+                  <span>APPS SCRIPT AKTIF</span>
                 </span>
               )}
             </h3>
             <p className="text-xs text-stone-400">
-              Sinkronisasi 2 arah (Read & Write) antara PUSAKA Bakery OS dan Google Spreadsheet untuk Inventory, Pesanan, dan Produksi.
+              Sinkronisasi 2 arah untuk Inventory Bahan Baku, Resep &amp; HPP, Katalog Produk, Pesanan POS, dan Batch Produksi.
             </p>
           </div>
         </div>
 
-        {/* User auth badge */}
-        {googleUser ? (
-          <div className="flex items-center space-x-3 bg-stone-950/70 border border-stone-800 px-3 py-1.5 rounded-lg">
-            {googleUser.photoURL ? (
-              <img
-                src={googleUser.photoURL}
-                alt={googleUser.displayName || 'Google User'}
-                className="w-6 h-6 rounded-full border border-stone-700"
-              />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-emerald-600 text-[10px] flex items-center justify-center font-bold">
-                {googleUser.email?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="text-left">
-              <div className="text-xs font-semibold text-stone-200 truncate max-w-[150px]">
-                {googleUser.displayName || googleUser.email}
-              </div>
-              <div className="text-[10px] text-stone-500 truncate max-w-[150px]">
-                {googleUser.email}
-              </div>
-            </div>
-            <button
-              onClick={signOutFromGoogle}
-              className="p-1 text-stone-400 hover:text-rose-400 rounded transition"
-              title="Logout Google"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+        {/* Quick Stats Summary */}
+        <div className="flex items-center space-x-2 text-xs">
+          <div className="bg-stone-950/70 border border-stone-800 px-3 py-1.5 rounded-lg text-stone-300 flex items-center space-x-2">
+            <Database className="w-3.5 h-3.5 text-amber-400" />
+            <span>{(ingredients || []).length} Bahan</span>
+            <span className="text-stone-600">•</span>
+            <span>{(orders || []).length} Order</span>
           </div>
-        ) : (
-          <div className="flex items-center space-x-2">
-            {isIframe && (
-              <button
-                onClick={handleOpenInNewTab}
-                className="inline-flex items-center space-x-1.5 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg text-xs font-semibold transition border border-stone-700"
-                title="Buka aplikasi di tab baru jika browser memblokir popup di dalam panel iframe"
-              >
-                <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
-                <span>Buka di Tab Baru</span>
-              </button>
-            )}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={isGoogleLoading}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-white hover:bg-stone-100 text-stone-900 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.98 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                />
-              </svg>
-              <span>{isGoogleLoading ? 'Menghubungkan...' : 'Login Akun Google'}</span>
-            </button>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* Alert Status Feedback */}
+      {/* Main Mode Selector: Apps Script (Recommended) vs OAuth Direct */}
+      <div className="flex flex-wrap gap-2 border-b border-stone-800 pb-3">
+        <button
+          onClick={() => setActiveTab('appscript')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+            activeTab === 'appscript'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-300" />
+          <span>Metode 1: Google Apps Script Web App (Paling Simpel &amp; Anti-Gagal)</span>
+          <span className="bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded text-[10px] font-black uppercase">
+            Rekomendasi
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('oauth')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+            activeTab === 'oauth'
+              ? 'bg-amber-500 text-stone-950 shadow-sm'
+              : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>Metode 2: Google OAuth / Firebase Login</span>
+        </button>
+      </div>
+
+      {/* Feedback Status Alert */}
       {syncStatusMsg && (
         <div
           className={`p-3 rounded-lg text-xs flex items-start space-x-2.5 ${
@@ -292,361 +473,452 @@ export const GoogleSheetsManager: React.FC = () => {
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
           )}
           <div className="flex-1">
-            <span>{syncStatusMsg.text}</span>
+            <p className="font-semibold">{syncStatusMsg.text}</p>
           </div>
         </div>
       )}
 
-      {/* Authorized Domain Guide (Shown if unauthorized domain error occurs or in production custom domains) */}
-      {isUnauthorizedDomain && (
-        <div className="bg-rose-950/40 border border-rose-800 rounded-lg p-4 text-xs text-rose-200 space-y-3 shadow-md">
-          <div className="flex items-center space-x-2 font-bold text-rose-300 text-sm">
-            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>Cara Mendaftarkan Domain ({currentHostname}) ke Firebase Console:</span>
-          </div>
-          <p className="text-stone-300 text-[11px] leading-relaxed">
-            Google Firebase Authentication memerlukan setiap domain baru (seperti Vercel / Netlify / Custom Domain) didaftarkan di daftar <strong>Authorized domains</strong> sebelum dapat melakukan login.
-          </p>
+      {/* ========================================================================= */}
+      {/* TAB 1: GOOGLE APPS SCRIPT WEB APP (SUPER SIMPLE - NO FIREBASE / NO POPUP) */}
+      {/* ========================================================================= */}
+      {activeTab === 'appscript' && (
+        <div className="space-y-6">
+          {/* Card 1: Web App URL Configuration */}
+          <div className="bg-stone-950/70 border border-stone-800 rounded-xl p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <label className="text-xs font-bold text-stone-200 flex items-center space-x-1.5">
+                  <Link2 className="w-4 h-4 text-emerald-400" />
+                  <span>URL Web App Google Apps Script</span>
+                </label>
+                <p className="text-[11px] text-stone-400">
+                  Tempel URL Web App dari Google Sheets Anda di sini. Bekerja 100% langsung di domain Vercel, HP, dan Browser mana saja tanpa popup.
+                </p>
+              </div>
 
-          <div className="bg-stone-950/70 border border-stone-800 rounded-lg p-3 space-y-2 text-[11px]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-stone-800">
-              <span className="text-stone-400">1. Salin Nama Domain Anda:</span>
-              <div className="flex items-center space-x-2">
-                <code className="bg-stone-900 px-2.5 py-1 rounded text-amber-300 font-mono font-bold border border-stone-700">
-                  {currentHostname}
-                </code>
-                <button
-                  onClick={handleCopyHostname}
-                  className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded font-semibold transition border border-stone-700"
+              {appsScriptConfig.spreadsheetUrl && (
+                <a
+                  href={appsScriptConfig.spreadsheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-emerald-400 rounded-lg text-xs font-semibold border border-stone-700 transition self-start sm:self-auto"
                 >
-                  {copiedDomain ? '✓ Tersalin' : 'Salin Domain'}
+                  <span>Buka Spreadsheet</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={webAppUrlInput}
+                onChange={(e) => setWebAppUrlInput(e.target.value)}
+                placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
+                className="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400 font-mono"
+              />
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleSaveAppsScriptUrl}
+                  className="px-4 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-bold transition border border-stone-700"
+                >
+                  Simpan URL
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTestAppsScript}
+                  disabled={isAppsScriptSyncing}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50 flex items-center space-x-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isAppsScriptSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isAppsScriptSyncing ? 'Menguji...' : 'Uji Koneksi'}</span>
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-              <span className="text-stone-400">2. Buka Menu Authorized Domains di Firebase:</span>
-              <a
-                href={firebaseConsoleAuthUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold transition shadow-sm"
-              >
-                <span>Buka Firebase Console Settings</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
+            {/* Sync Controls if connected */}
+            {isAppsScriptConnected && (
+              <div className="pt-3 border-t border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={handlePushAppsScript}
+                    disabled={isAppsScriptSyncing}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-sm"
+                  >
+                    <ArrowUpFromLine className={`w-3.5 h-3.5 ${isAppsScriptSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isAppsScriptSyncing ? 'Menyinkronkan...' : 'Kirim Semua Data (Push Sync)'}</span>
+                  </button>
 
-            <div className="pt-2 text-stone-400 text-[11px] leading-relaxed space-y-1">
-              <p><strong>Langkah di Firebase Console:</strong></p>
-              <ol className="list-decimal list-inside space-y-0.5 text-stone-300 pl-1">
-                <li>Buka link di atas, gulir ke bagian <strong>Authorized domains</strong></li>
-                <li>Klik tombol <strong>Add domain</strong></li>
-                <li>Tempel (Paste) domain <code className="text-amber-300">{currentHostname}</code> lalu klik <strong>Add</strong></li>
-                <li>Kembali ke tab ini dan klik <strong>Login Akun Google</strong> kembali.</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Popup Troubleshooting Guide if blocked or help toggled */}
-      {(!googleUser || showPopupHelp) && (
-        <div className="bg-amber-950/30 border border-amber-800/60 rounded-lg p-4 text-xs text-amber-200/90 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 font-bold text-amber-300">
-              <ShieldAlert className="w-4 h-4" />
-              <span>Petunjuk Jika Pop-Up Login Google Terblokir di Browser</span>
-            </div>
-            <button
-              onClick={() => setShowPopupHelp(!showPopupHelp)}
-              className="text-[11px] underline text-amber-400 hover:text-amber-300"
-            >
-              {showPopupHelp ? 'Sembunyikan' : 'Bantuan Popup'}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 text-[11px] text-stone-300">
-            <div className="bg-stone-950/50 p-2.5 rounded border border-stone-800 space-y-1">
-              <div className="font-semibold text-amber-400">Cara 1: Izinkan Pop-Up di Bar Alamat URL</div>
-              <p className="text-stone-400 leading-relaxed">
-                Di sebelah kanan atau kiri kolom URL browser, klik ikon <strong>"Pop-up diblokir"</strong> (atau ikon gembok) ➔ Pilih <strong>"Selalu izinkan pop-up dan pengalihan"</strong> ➔ Klik tombol <em>Login Akun Google</em> kembali.
-              </p>
-            </div>
-
-            <div className="bg-stone-950/50 p-2.5 rounded border border-stone-800 space-y-1">
-              <div className="font-semibold text-amber-400">Cara 2: Buka di Tab Penuh (Direkomendasikan)</div>
-              <p className="text-stone-400 leading-relaxed mb-2">
-                Jika Anda sedang membuka aplikasi di dalam jendela pratinjau preview, buka tab browser baru agar pop-up tidak terhambat.
-              </p>
-              <button
-                onClick={handleOpenInNewTab}
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-400 text-stone-950 font-bold rounded text-[11px] hover:bg-amber-300 transition"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>Buka Aplikasi di Tab Baru</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* State 1: User Not Logged In */}
-      {!googleUser && (
-        <div className="bg-stone-950/50 border border-stone-800/80 rounded-lg p-5 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center mx-auto text-amber-400">
-            <FileSpreadsheet className="w-6 h-6" />
-          </div>
-          <div className="max-w-md mx-auto">
-            <h4 className="text-sm font-bold text-stone-200">Hubungkan Akun Google Anda</h4>
-            <p className="text-xs text-stone-400 mt-1">
-              Login dengan Google untuk membuat Spreadsheet database cloud otomatis yang dapat dibaca (Read) dan ditulis (Write) secara langsung.
-            </p>
-          </div>
-          <div className="flex items-center justify-center space-x-3 pt-2">
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={isGoogleLoading}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
-            >
-              <span>Masuk dengan Google</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* State 2: Logged In but Not Connected to Sheet */}
-      {googleUser && !googleSheetsConfig.spreadsheetId && (
-        <div className="space-y-4">
-          <div className="flex border-b border-stone-800">
-            <button
-              onClick={() => setActiveMode('create')}
-              className={`pb-2 px-4 text-xs font-bold border-b-2 transition ${
-                activeMode === 'create'
-                  ? 'border-amber-400 text-amber-400'
-                  : 'border-transparent text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              1. Buat Spreadsheet Database Baru (Otomatis)
-            </button>
-            <button
-              onClick={() => setActiveMode('connect')}
-              className={`pb-2 px-4 text-xs font-bold border-b-2 transition ${
-                activeMode === 'connect'
-                  ? 'border-amber-400 text-amber-400'
-                  : 'border-transparent text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              2. Hubungkan ke Spreadsheet yang Sudah Ada
-            </button>
-          </div>
-
-          {activeMode === 'create' ? (
-            <div className="bg-stone-950/60 border border-stone-800 rounded-lg p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  Nama File Google Spreadsheet
-                </label>
-                <input
-                  type="text"
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                  placeholder="Misal: PUSAKA Bakery - Database 2026"
-                />
-              </div>
-
-              <div className="bg-stone-900/80 rounded-lg p-3 border border-stone-800 text-xs space-y-2">
-                <div className="font-semibold text-stone-300 flex items-center space-x-1.5">
-                  <Layers className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Sheet / Tab yang akan otomatis dibuat:</span>
+                  <button
+                    onClick={handlePullAppsScript}
+                    disabled={isAppsScriptSyncing}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold transition border border-stone-700 disabled:opacity-50"
+                  >
+                    <ArrowDownToLine className={`w-3.5 h-3.5 ${isAppsScriptSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isAppsScriptSyncing ? 'Membaca...' : 'Tarik Data dari Sheets (Pull)'}</span>
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-stone-400">
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">🧾 Orders_Penjualan</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">📦 Bahan_Baku_Stok</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">🍳 Resep_BOM</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">🍞 Produk_Katalog</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">👥 Pelanggan_CRM</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">👨‍🍳 Produksi_Batch</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">🗑️ Waste_Kerusakan</span>
-                  <span className="bg-stone-800/60 px-2 py-1 rounded">🛒 Pembelian_PO</span>
+
+                <div className="text-[11px] text-stone-400">
+                  Terakhir Sinkron: <span className="text-emerald-300 font-semibold">{appsScriptConfig.lastSyncedAt || 'Belum pernah'}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-Sync Option */}
+            <div className="pt-2">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={appsScriptConfig.autoSyncOrders}
+                  onChange={(e) => updateAppsScriptConfig({ autoSyncOrders: e.target.checked })}
+                  className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-400 bg-stone-900 border-stone-700"
+                />
+                <span className="text-xs text-stone-300 font-medium">
+                  Otomatis kirim setiap transaksi penjualan Kasir (POS) baru langsung ke Google Sheets
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Card 2: 1-Minute Step by Step Guide & Copy Script */}
+          <div className="bg-stone-950/50 border border-emerald-800/40 rounded-xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+                  ⚡
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    Panduan 1 Menit Menghubungkan Google Spreadsheet
+                  </h4>
+                  <p className="text-[11px] text-stone-400">
+                    Tidak memerlukan setup Google Cloud / Firebase / OAuth yang rumit.
+                  </p>
                 </div>
               </div>
 
               <button
-                onClick={handleCreateSheet}
-                disabled={isGoogleSyncing}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
+                type="button"
+                onClick={handleCopyCode}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold rounded-lg text-xs transition shadow-sm"
               >
-                <PlusCircle className="w-4 h-4" />
-                <span>{isGoogleSyncing ? 'Sedang Membuat Database...' : 'Buat & Sinkronkan Data Sekarang'}</span>
+                {copiedScript ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedScript ? '✓ Kode Script Tersalin!' : '1. Salin Kode Apps Script'}</span>
               </button>
             </div>
-          ) : (
-            <div className="bg-stone-950/60 border border-stone-800 rounded-lg p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  Spreadsheet ID atau Link Google Sheets
-                </label>
-                <input
-                  type="text"
-                  value={existingSheetInput}
-                  onChange={(e) => setExistingSheetInput(e.target.value)}
-                  className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                  placeholder="https://docs.google.com/spreadsheets/d/1A2B3C.../edit atau ID Spreadsheet"
-                />
-                <p className="text-[11px] text-stone-500 mt-1">
-                  Pastikan akun Google yang Anda gunakan telah memiliki hak akses edit pada spreadsheet tersebut.
+
+            {/* Steps */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <div className="bg-stone-900/80 border border-stone-800 rounded-lg p-3 space-y-1">
+                <div className="text-emerald-400 font-bold flex items-center justify-between">
+                  <span>Langkah 1</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </div>
+                <p className="text-stone-300 font-semibold">Buat Spreadsheet</p>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  Buka{' '}
+                  <a
+                    href="https://sheets.new"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-amber-400 underline font-bold"
+                  >
+                    sheets.new
+                  </a>{' '}
+                  di browser Anda untuk membuat Spreadsheet kosong baru.
                 </p>
               </div>
 
+              <div className="bg-stone-900/80 border border-stone-800 rounded-lg p-3 space-y-1">
+                <div className="text-emerald-400 font-bold">Langkah 2</div>
+                <p className="text-stone-300 font-semibold">Buka Apps Script</p>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  Di Google Sheets, klik menu <strong>Extensions (Ekstensi)</strong> ➔ <strong>Apps Script</strong>.
+                </p>
+              </div>
+
+              <div className="bg-stone-900/80 border border-stone-800 rounded-lg p-3 space-y-1">
+                <div className="text-emerald-400 font-bold">Langkah 3</div>
+                <p className="text-stone-300 font-semibold">Tempel &amp; Deploy</p>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  Hapus kode default, tempel kode yang sudah disalin. Klik <strong>Deploy</strong> (Terapkan) ➔ <strong>New deployment</strong> ➔ pilih <strong>Web app</strong>.
+                </p>
+              </div>
+
+              <div className="bg-stone-900/80 border border-stone-800 rounded-lg p-3 space-y-1">
+                <div className="text-emerald-400 font-bold">Langkah 4</div>
+                <p className="text-stone-300 font-semibold">Set "Anyone" &amp; Selesai</p>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  Pilih <em>Who has access:</em> <strong>Anyone</strong> (Siapa saja). Salin <strong>Web app URL</strong> lalu tempel di kotak di atas.
+                </p>
+              </div>
+            </div>
+
+            {/* Collapsible Script Code Preview */}
+            <div className="pt-2">
               <button
-                onClick={handleConnectSheet}
-                disabled={isGoogleSyncing}
-                className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
+                type="button"
+                onClick={() => setShowCodePreview(!showCodePreview)}
+                className="text-xs text-stone-400 hover:text-stone-200 flex items-center space-x-1.5 underline"
               >
-                <Link2 className="w-4 h-4" />
-                <span>{isGoogleSyncing ? 'Menghubungkan...' : 'Hubungkan ke Database Ini'}</span>
+                <Code2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>{showCodePreview ? 'Sembunyikan Cuplikan Kode Script' : 'Lihat / Periksa Kode Apps Script Lengkap'}</span>
               </button>
+
+              {showCodePreview && (
+                <div className="mt-3 bg-stone-950 border border-stone-800 rounded-lg p-3 relative">
+                  <div className="flex items-center justify-between pb-2 border-b border-stone-800 text-[11px] text-stone-400">
+                    <span>Google Apps Script (Code.gs)</span>
+                    <button
+                      onClick={handleCopyCode}
+                      className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded text-[10px] font-bold"
+                    >
+                      {copiedScript ? '✓ Tersalin' : 'Salin Kode'}
+                    </button>
+                  </div>
+                  <pre className="text-[10px] font-mono text-stone-300 overflow-x-auto max-h-60 mt-2 p-2 bg-stone-900/70 rounded">
+                    {appsScriptTemplateCode}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: GOOGLE OAUTH / FIREBASE LOGIN METHOD */}
+      {/* ========================================================================= */}
+      {activeTab === 'oauth' && (
+        <div className="space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-stone-950/70 border border-stone-800 rounded-xl">
+            <div>
+              <div className="text-xs font-bold text-stone-200">Status Autentikasi Google OAuth</div>
+              <p className="text-[11px] text-stone-400">
+                Memerlukan Google Cloud &amp; Firebase Project dengan konfigurasi domain yang diizinkan.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowConfigModal(!showConfigModal)}
+                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+                  isCustomActive
+                    ? 'bg-amber-400/10 border-amber-400/40 text-amber-300 hover:bg-amber-400/20'
+                    : 'bg-stone-800 border-stone-700 text-stone-300 hover:bg-stone-700'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isCustomActive ? 'Firebase Kustom Aktif' : 'Setup Kredensial Vercel'}</span>
+              </button>
+
+              {googleUser && (
+                <button
+                  onClick={signOutFromGoogle}
+                  className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-rose-300 rounded-lg text-xs border border-stone-700 flex items-center space-x-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Modal Setup Firebase */}
+          {showConfigModal && (
+            <div className="bg-stone-950 border border-amber-500/40 rounded-xl p-5 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+                <div className="flex items-center space-x-2">
+                  <KeyRound className="w-5 h-5 text-amber-400" />
+                  <h4 className="text-sm font-bold text-white">Konfigurasi Firebase Pribadi untuk Vercel</h4>
+                </div>
+                <button
+                  onClick={() => setShowConfigModal(false)}
+                  className="text-stone-400 hover:text-white text-xs px-2 py-1 bg-stone-900 rounded border border-stone-800"
+                >
+                  ✕ Tutup
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <textarea
+                  rows={2}
+                  value={jsonConfigInput}
+                  onChange={(e) => setJsonConfigInput(e.target.value)}
+                  placeholder="Tempel const firebaseConfig = { apiKey: '...', authDomain: '...', projectId: '...' };"
+                  className="w-full bg-stone-900 border border-stone-700 rounded-lg p-2 text-xs font-mono text-white focus:border-amber-400 focus:outline-none"
+                />
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={handleParseJsonConfig}
+                    className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-amber-300 rounded-lg text-xs font-bold border border-stone-700"
+                  >
+                    Ekstrak Form
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCustomFirebase}
+                    className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold"
+                  >
+                    Simpan Firebase Pribadi
+                  </button>
+                  {isCustomActive && (
+                    <button
+                      type="button"
+                      onClick={handleResetToDefaultFirebase}
+                      className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg text-xs border border-stone-700"
+                    >
+                      Reset Default
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* User Not Logged In */}
+          {!googleUser ? (
+            <div className="bg-stone-950/50 border border-stone-800/80 rounded-lg p-6 text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-stone-800/80 border border-stone-700 flex items-center justify-center mx-auto text-amber-400">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1">
+                <h4 className="text-sm font-bold text-stone-200">Login dengan Akun Google</h4>
+                <p className="text-xs text-stone-400">
+                  Pilih salah satu metode login Google di bawah ini.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition disabled:opacity-50"
+                >
+                  <span>Masuk via Popup</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={handleGoogleSignInRedirect}
+                  disabled={isGoogleLoading}
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold border border-stone-700 transition disabled:opacity-50"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Masuk via Halaman Penuh (Redirect)</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Logged in OAuth state */
+            <div className="space-y-4">
+              {googleSheetsConfig.spreadsheetId ? (
+                <div className="bg-stone-950/80 border border-emerald-500/30 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">
+                      Google Spreadsheet OAuth Terhubung
+                    </div>
+                    <h4 className="text-sm font-bold text-white">
+                      {googleSheetsConfig.spreadsheetTitle || 'PUSAKA Bakery Database'}
+                    </h4>
+                    <div className="text-xs text-stone-400">ID: {googleSheetsConfig.spreadsheetId}</div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleManualOAuthSync}
+                      disabled={isGoogleSyncing}
+                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold"
+                    >
+                      Kirim Data (Push)
+                    </button>
+                    <button
+                      onClick={handleLoadFromOAuthSheets}
+                      disabled={isGoogleSyncing}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold"
+                    >
+                      Baca Data (Pull)
+                    </button>
+                    <button
+                      onClick={disconnectGoogleSheet}
+                      className="px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg text-xs border border-stone-700"
+                    >
+                      Putuskan
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-stone-950/60 border border-stone-800 rounded-lg p-4 space-y-4">
+                  <div className="flex border-b border-stone-800 pb-2 gap-4">
+                    <button
+                      onClick={() => setOauthMode('create')}
+                      className={`text-xs font-bold pb-1 ${oauthMode === 'create' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-stone-400'}`}
+                    >
+                      Buat Spreadsheet Baru
+                    </button>
+                    <button
+                      onClick={() => setOauthMode('connect')}
+                      className={`text-xs font-bold pb-1 ${oauthMode === 'connect' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-stone-400'}`}
+                    >
+                      Hubungkan Spreadsheet ID
+                    </button>
+                  </div>
+
+                  {oauthMode === 'create' ? (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={customTitle}
+                        onChange={(e) => setCustomTitle(e.target.value)}
+                        className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white"
+                      />
+                      <button
+                        onClick={handleCreateOAuthSheet}
+                        disabled={isGoogleSyncing}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold"
+                      >
+                        Buat &amp; Sinkronkan Sekarang
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={existingSheetInput}
+                        onChange={(e) => setExistingSheetInput(e.target.value)}
+                        placeholder="Spreadsheet ID atau Link URL"
+                        className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white"
+                      />
+                      <button
+                        onClick={handleConnectOAuthSheet}
+                        disabled={isGoogleSyncing}
+                        className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold"
+                      >
+                        Hubungkan ke Spreadsheet
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* State 3: Logged In AND Connected */}
-      {googleUser && googleSheetsConfig.spreadsheetId && (
-        <div className="space-y-5">
-          {/* Active Sheet Card */}
-          <div className="bg-stone-950/80 border border-emerald-500/30 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider flex items-center space-x-1.5">
-                <Database className="w-3.5 h-3.5" />
-                <span>Database Google Sheets Aktif</span>
-              </div>
-              <h4 className="text-sm font-bold text-white">
-                {googleSheetsConfig.spreadsheetTitle || 'PUSAKA Bakery Database'}
-              </h4>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400">
-                <span className="font-mono text-[11px] bg-stone-800/80 px-2 py-0.5 rounded text-stone-300">
-                  ID: {googleSheetsConfig.spreadsheetId}
-                </span>
-                <span>Terakhir Sinkron: {googleSheetsConfig.lastSyncedAt || 'Baru saja'}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {googleSheetsConfig.spreadsheetUrl && (
-                <a
-                  href={googleSheetsConfig.spreadsheetUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center space-x-1.5 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold transition border border-stone-700"
-                >
-                  <span>Buka di Google Drive</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
-
-              <button
-                onClick={handleLoadFromSheets}
-                disabled={isGoogleSyncing}
-                className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-sm"
-                title="Tarik data terbaru dari Google Sheets ke Aplikasi"
-              >
-                <ArrowDownToLine className={`w-3.5 h-3.5 ${isGoogleSyncing ? 'animate-spin' : ''}`} />
-                <span>{isGoogleSyncing ? 'Memuat...' : 'Baca Data (Pull)'}</span>
-              </button>
-
-              <button
-                onClick={handleManualSync}
-                disabled={isGoogleSyncing}
-                className="inline-flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-sm"
-                title="Kirim semua data aplikasi saat ini ke Google Sheets"
-              >
-                <ArrowUpFromLine className={`w-3.5 h-3.5 ${isGoogleSyncing ? 'animate-spin' : ''}`} />
-                <span>{isGoogleSyncing ? 'Menyinkronkan...' : 'Kirim Data (Push)'}</span>
-              </button>
-
-              <button
-                onClick={disconnectGoogleSheet}
-                className="inline-flex items-center space-x-1 px-3 py-2 bg-stone-900 border border-stone-700 hover:border-rose-700 text-stone-400 hover:text-rose-400 rounded-lg text-xs transition"
-                title="Putuskan Hubungan Spreadsheet"
-              >
-                <Unlink className="w-3.5 h-3.5" />
-                <span>Putuskan</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Module Data Counts & Sync Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-stone-950/70 border border-stone-800/80 rounded-lg p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-stone-400">Stok Bahan Baku</div>
-                <div className="text-base font-bold text-stone-100">{(ingredients || []).length} Item Terdaftar</div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs">
-                📦
-              </div>
-            </div>
-
-            <div className="bg-stone-950/70 border border-stone-800/80 rounded-lg p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-stone-400">Total Transaksi Order</div>
-                <div className="text-base font-bold text-stone-100">{(orders || []).length} Pesanan</div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                🧾
-              </div>
-            </div>
-
-            <div className="bg-stone-950/70 border border-stone-800/80 rounded-lg p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-stone-400">Riwayat Batch Produksi</div>
-                <div className="text-base font-bold text-stone-100">{(productions || []).length} Batch</div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold text-xs">
-                👨‍🍳
-              </div>
-            </div>
-          </div>
-
-          {/* Sync Settings */}
-          <div className="bg-stone-950/50 border border-stone-800/80 rounded-lg p-4 space-y-3">
-            <div className="text-xs font-bold text-stone-300 flex items-center space-x-1.5">
-              <Settings2 className="w-4 h-4 text-amber-400" />
-              <span>Pengaturan Sinkronisasi Otomatis Terhubung</span>
-            </div>
-            <label className="flex items-start space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={googleSheetsConfig.autoSyncOrders}
-                onChange={(e) => updateGoogleSheetsConfig({ autoSyncOrders: e.target.checked })}
-                className="mt-0.5 w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-stone-900 border-stone-700"
-              />
-              <div>
-                <span className="text-xs font-semibold text-stone-200">
-                  Otomatis tambahkan transaksi kasir baru ke sheet Orders_Penjualan
-                </span>
-                <p className="text-[11px] text-stone-400">
-                  Setiap kali transaksi baru dibuat di kasir (POS), baris baru akan langsung ditambahkan ke Google Sheets secara real-time.
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-      )}
-
-      {/* Offline Backup & Restore Section (Always Accessible) */}
+      {/* ========================================================================= */}
+      {/* OFFLINE BACKUP & RESTORE SECTION */}
+      {/* ========================================================================= */}
       <div className="pt-4 border-t border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
         <div className="space-y-0.5">
           <div className="font-semibold text-stone-300 flex items-center space-x-1.5">
             <Database className="w-3.5 h-3.5 text-amber-400" />
-            <span>Cadangan & Ekspor Data Lokal (Offline JSON / Backup)</span>
+            <span>Cadangan &amp; Ekspor Data Lokal (Offline JSON Backup)</span>
           </div>
           <p className="text-[11px] text-stone-500">
-            Ekspor seluruh database (Resep, HPP, Stok, Pesanan, CRM) ke berkas file cadangan kapan saja tanpa memerlukan izin pop-up.
+            Simpan salinan database lengkap ke file lokal komputer atau pulihkan kapan saja tanpa memerlukan koneksi internet.
           </p>
         </div>
         <div className="flex items-center space-x-2 shrink-0">
