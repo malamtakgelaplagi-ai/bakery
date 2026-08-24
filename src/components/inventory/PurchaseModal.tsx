@@ -12,28 +12,31 @@ interface PurchaseModalProps {
 export const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose }) => {
   const { suppliers, ingredients, recordPurchase, currentUser } = useBakery();
 
-  const [supplierId, setSupplierId] = useState(suppliers[0]?.id || '');
+  const safeSuppliers = suppliers || [];
+  const safeIngredients = ingredients || [];
+
+  const [supplierId, setSupplierId] = useState(safeSuppliers[0]?.id || '');
   const [date, setDate] = useState('2026-08-23');
   const [paymentStatus, setPaymentStatus] = useState<'LUNAS' | 'HUTANG'>('LUNAS');
   const [notes, setNotes] = useState('');
 
   const [items, setItems] = useState<PurchaseItem[]>([
     {
-      ingredientId: ingredients[0]?.id || '',
-      ingredientName: ingredients[0]?.name || '',
-      buyUnit: ingredients[0]?.buyUnit || 'kg',
-      recipeUnit: ingredients[0]?.recipeUnit || 'g',
-      conversionFactor: ingredients[0]?.conversionFactor || 1000,
+      ingredientId: safeIngredients[0]?.id || '',
+      ingredientName: safeIngredients[0]?.name || '',
+      buyUnit: safeIngredients[0]?.buyUnit || 'kg',
+      recipeUnit: safeIngredients[0]?.recipeUnit || 'g',
+      conversionFactor: safeIngredients[0]?.conversionFactor || 1000,
       qtyBuyUnit: 5,
-      pricePerBuyUnit: ingredients[0]?.latestBuyPrice || 20000,
-      subtotal: 5 * (ingredients[0]?.latestBuyPrice || 20000),
+      pricePerBuyUnit: safeIngredients[0]?.latestBuyPrice || 20000,
+      subtotal: 5 * (safeIngredients[0]?.latestBuyPrice || 20000),
     },
   ]);
 
   if (!isOpen) return null;
 
   const handleAddItem = () => {
-    const defaultIng = ingredients[0];
+    const defaultIng = safeIngredients[0];
     if (!defaultIng) return;
 
     setItems([
@@ -52,16 +55,16 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose })
   };
 
   const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, idx) => idx !== index));
+    setItems((items || []).filter((_, idx) => idx !== index));
   };
 
   const handleItemChange = (index: number, field: keyof PurchaseItem, val: any) => {
     setItems(
-      items.map((item, idx) => {
+      (items || []).map((item, idx) => {
         if (idx !== index) return item;
 
         if (field === 'ingredientId') {
-          const ing = ingredients.find((i) => i.id === val);
+          const ing = safeIngredients.find((i) => i.id === val);
           if (!ing) return item;
           const qty = item.qtyBuyUnit || 1;
           return {
@@ -85,13 +88,13 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose })
     );
   };
 
-  const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const totalAmount = (items || []).reduce((sum, item) => sum + (item.subtotal || 0), 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0) return;
+    if (!items || items.length === 0) return;
 
-    const supplierObj = suppliers.find((s) => s.id === supplierId);
+    const supplierObj = safeSuppliers.find((s) => s.id === supplierId);
 
     recordPurchase({
       date,
@@ -150,7 +153,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose })
                 required
                 className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
               >
-                {suppliers.map((s) => (
+                {safeSuppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -190,7 +193,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose })
             </div>
 
             <div className="space-y-2">
-              {items.map((item, idx) => (
+              {(items || []).map((item, idx) => (
                 <div
                   key={idx}
                   className="p-3 bg-stone-50 border border-stone-200 rounded-lg grid grid-cols-1 sm:grid-cols-12 gap-2 items-center text-xs"
@@ -204,7 +207,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose })
                       onChange={(e) => handleItemChange(idx, 'ingredientId', e.target.value)}
                       className="w-full px-2.5 py-1.5 border border-stone-300 rounded bg-white font-medium focus:outline-none"
                     >
-                      {ingredients.map((ing) => (
+                      {safeIngredients.map((ing) => (
                         <option key={ing.id} value={ing.id}>
                           {ing.name} ({ing.buyUnit})
                         </option>

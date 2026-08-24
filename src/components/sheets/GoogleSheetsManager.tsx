@@ -438,7 +438,7 @@ export const GoogleSheetsManager: React.FC = () => {
             <div className="bg-stone-950/70 border border-stone-800/80 rounded-lg p-3 flex items-center justify-between">
               <div>
                 <div className="text-[11px] text-stone-400">Stok Bahan Baku</div>
-                <div className="text-base font-bold text-stone-100">{ingredients.length} Item Terdaftar</div>
+                <div className="text-base font-bold text-stone-100">{(ingredients || []).length} Item Terdaftar</div>
               </div>
               <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs">
                 📦
@@ -448,7 +448,7 @@ export const GoogleSheetsManager: React.FC = () => {
             <div className="bg-stone-950/70 border border-stone-800/80 rounded-lg p-3 flex items-center justify-between">
               <div>
                 <div className="text-[11px] text-stone-400">Total Transaksi Order</div>
-                <div className="text-base font-bold text-stone-100">{orders.length} Pesanan</div>
+                <div className="text-base font-bold text-stone-100">{(orders || []).length} Pesanan</div>
               </div>
               <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-xs">
                 🧾
@@ -458,7 +458,7 @@ export const GoogleSheetsManager: React.FC = () => {
             <div className="bg-stone-950/70 border border-stone-800/80 rounded-lg p-3 flex items-center justify-between">
               <div>
                 <div className="text-[11px] text-stone-400">Riwayat Batch Produksi</div>
-                <div className="text-base font-bold text-stone-100">{productions.length} Batch</div>
+                <div className="text-base font-bold text-stone-100">{(productions || []).length} Batch</div>
               </div>
               <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold text-xs">
                 👨‍🍳

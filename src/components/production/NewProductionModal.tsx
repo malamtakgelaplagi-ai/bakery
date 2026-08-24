@@ -10,8 +10,11 @@ interface NewProductionModalProps {
 
 export const NewProductionModal: React.FC<NewProductionModalProps> = ({ isOpen, onClose }) => {
   const { products, recipes, ingredients, createProductionRun, currentUser } = useBakery();
+  const safeProducts = products || [];
+  const safeRecipes = recipes || [];
+  const safeIngredients = ingredients || [];
 
-  const [productId, setProductId] = useState(products[0]?.id || '');
+  const [productId, setProductId] = useState(safeProducts[0]?.id || '');
   const [targetQty, setTargetQty] = useState(5);
   const [operatorName, setOperatorName] = useState(currentUser.name);
   const [notes, setNotes] = useState('');
@@ -22,8 +25,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({ isOpen, 
 
   if (!isOpen) return null;
 
-  const selectedProduct = (products || []).find((p) => p.id === productId) || (products || [])[0];
-  const recipe = (recipes || []).find((r) => r.id === selectedProduct?.recipeId);
+  const selectedProduct = safeProducts.find((p) => p.id === productId) || safeProducts[0];
+  const recipe = safeRecipes.find((r) => r.id === selectedProduct?.recipeId);
   const recVers = recipe?.versions || [];
   const version = recVers.find((v) => v.id === selectedProduct?.recipeVersionId) || recVers[0];
 
@@ -31,8 +34,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({ isOpen, 
   const scale = version ? targetQty / (version.yieldQty || 1) : 1;
   const versionItems = version?.items || [];
   const previewRequirements = version
-    ? versionItems.map((item) => {
-        const ing = (ingredients || []).find((i) => i.id === item.ingredientId);
+    ? (versionItems || []).map((item) => {
+        const ing = safeIngredients.find((i) => i.id === item.ingredientId);
         const needed = item.quantity * scale;
         const available = ing ? ing.stockInRecipeUnit : 0;
         const isSufficient = available >= needed;
@@ -102,7 +105,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({ isOpen, 
                 required
                 className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
               >
-                {products.map((p) => (
+                {safeProducts.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} ({p.sizeSpec})
                   </option>

@@ -24,6 +24,7 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
   mode,
 }) => {
   const { ingredients, addRecipe, addRecipeVersion, currentUser } = useBakery();
+  const safeIngredients = ingredients || [];
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Bolu Tradisional');
@@ -118,7 +119,7 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
       setNotes('');
 
       // Default with standard raw items for rapid setup
-      const initialRaw = ingredients.filter((i) => i.category !== 'Kemasan & Packaging').slice(0, 5);
+      const initialRaw = safeIngredients.filter((i) => i.category !== 'Kemasan & Packaging').slice(0, 5);
       setBomItems(
         initialRaw.map((ing) => ({
           ingredientId: ing.id,
@@ -130,7 +131,7 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
         }))
       );
 
-      const initialPkg = ingredients.filter((i) => i.category === 'Kemasan & Packaging').slice(0, 2);
+      const initialPkg = safeIngredients.filter((i) => i.category === 'Kemasan & Packaging').slice(0, 2);
       setPackagingItems(
         initialPkg.map((pkg) => ({
           ingredientId: pkg.id,
@@ -147,8 +148,8 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
 
   // Add BOM row
   const handleAddBomItem = () => {
-    const rawIngs = ingredients.filter((i) => i.category !== 'Kemasan & Packaging');
-    const first = rawIngs[0] || ingredients[0];
+    const rawIngs = safeIngredients.filter((i) => i.category !== 'Kemasan & Packaging');
+    const first = rawIngs[0] || safeIngredients[0];
     if (!first) return;
     setBomItems([
       ...bomItems,
@@ -165,10 +166,10 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
 
   const handleBomChange = (idx: number, field: string, val: any) => {
     setBomItems(
-      bomItems.map((item, i) => {
+      (bomItems || []).map((item, i) => {
         if (i !== idx) return item;
         if (field === 'ingredientId') {
-          const ing = ingredients.find((x) => x.id === val);
+          const ing = safeIngredients.find((x) => x.id === val);
           if (!ing) return item;
           const cost = item.quantity * ing.costPerRecipeUnit;
           return {
@@ -194,13 +195,13 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
   };
 
   const handleRemoveBomItem = (idx: number) => {
-    setBomItems(bomItems.filter((_, i) => i !== idx));
+    setBomItems((bomItems || []).filter((_, i) => i !== idx));
   };
 
   // Add Packaging row
   const handleAddPkgItem = () => {
-    const pkgs = ingredients.filter((i) => i.category === 'Kemasan & Packaging');
-    const first = pkgs[0] || ingredients[0];
+    const pkgs = safeIngredients.filter((i) => i.category === 'Kemasan & Packaging');
+    const first = pkgs[0] || safeIngredients[0];
     if (!first) return;
     setPackagingItems([
       ...packagingItems,
@@ -216,10 +217,10 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
 
   const handlePkgChange = (idx: number, field: string, val: any) => {
     setPackagingItems(
-      packagingItems.map((item, i) => {
+      (packagingItems || []).map((item, i) => {
         if (i !== idx) return item;
         if (field === 'ingredientId') {
-          const ing = ingredients.find((x) => x.id === val);
+          const ing = safeIngredients.find((x) => x.id === val);
           if (!ing) return item;
           return {
             ...item,
@@ -243,7 +244,7 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
   };
 
   const handleRemovePkgItem = (idx: number) => {
-    setPackagingItems(packagingItems.filter((_, i) => i !== idx));
+    setPackagingItems((packagingItems || []).filter((_, i) => i !== idx));
   };
 
   // Add Direct Cost
@@ -458,7 +459,7 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
                       onChange={(e) => handleBomChange(idx, 'ingredientId', e.target.value)}
                       className="w-full px-2 py-1.5 border border-stone-300 rounded bg-white text-xs font-medium focus:outline-none"
                     >
-                      {ingredients
+                      {safeIngredients
                         .filter((i) => i.category !== 'Kemasan & Packaging')
                         .map((ing) => (
                           <option key={ing.id} value={ing.id}>
@@ -533,7 +534,7 @@ export const RecipeEditorModal: React.FC<RecipeEditorModalProps> = ({
                       onChange={(e) => handlePkgChange(idx, 'ingredientId', e.target.value)}
                       className="w-full px-2 py-1.5 border border-stone-300 rounded bg-white text-xs font-medium focus:outline-none"
                     >
-                      {ingredients
+                      {safeIngredients
                         .filter((i) => i.category === 'Kemasan & Packaging')
                         .map((pkg) => (
                           <option key={pkg.id} value={pkg.id}>

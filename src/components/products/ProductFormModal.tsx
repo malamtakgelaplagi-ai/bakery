@@ -16,6 +16,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   productToEdit,
 }) => {
   const { recipes, addProduct, updateProduct } = useBakery();
+  const safeRecipes = recipes || [];
 
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
@@ -167,7 +168,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 required
                 className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
               >
-                {recipes.map((r) => (
+                {safeRecipes.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>

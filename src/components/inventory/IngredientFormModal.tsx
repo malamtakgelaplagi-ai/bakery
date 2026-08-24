@@ -27,6 +27,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
   initialData,
 }) => {
   const { suppliers, addIngredient, updateIngredient } = useBakery();
+  const safeSuppliers = suppliers || [];
 
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
@@ -180,7 +181,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
                 className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
               >
                 <option value="">-- Pilih Supplier --</option>
-                {suppliers.map((s) => (
+                {safeSuppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>

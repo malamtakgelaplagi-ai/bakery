@@ -27,6 +27,8 @@ interface NewOrderModalProps {
 
 export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose }) => {
   const { products, customers, createOrder, currentUser } = useBakery();
+  const safeProducts = products || [];
+  const safeCustomers = customers || [];
 
   // Customer info
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -39,12 +41,12 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
     { productId: string; productName: string; qty: number; unitPrice: number; subtotal: number; hppSnapshot: number }[]
   >([
     {
-      productId: products[0]?.id || '',
-      productName: products[0]?.name || '',
+      productId: safeProducts[0]?.id || '',
+      productName: safeProducts[0]?.name || '',
       qty: 1,
-      unitPrice: products[0]?.sellingPrice || 55000,
-      subtotal: products[0]?.sellingPrice || 55000,
-      hppSnapshot: products[0]?.baseHpp || 28000,
+      unitPrice: safeProducts[0]?.sellingPrice || 55000,
+      subtotal: safeProducts[0]?.sellingPrice || 55000,
+      hppSnapshot: safeProducts[0]?.baseHpp || 28000,
     },
   ]);
 
@@ -80,11 +82,11 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
   };
 
   const handleAddItem = () => {
-    const defaultP = products[0];
+    const defaultP = safeProducts[0];
     if (!defaultP) return;
 
     setItems([
-      ...items,
+      ...(items || []),
       {
         productId: defaultP.id,
         productName: defaultP.name,
@@ -98,11 +100,11 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
 
   const handleItemChange = (idx: number, field: string, val: any) => {
     setItems(
-      items.map((item, i) => {
+      (items || []).map((item, i) => {
         if (i !== idx) return item;
 
         if (field === 'productId') {
-          const prod = products.find((p) => p.id === val);
+          const prod = safeProducts.find((p) => p.id === val);
           if (!prod) return item;
           const qty = item.qty || 1;
           return {
@@ -279,7 +281,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
             </div>
 
             <div className="space-y-2">
-              {items.map((item, idx) => (
+              {(items || []).map((item, idx) => (
                 <div
                   key={idx}
                   className="p-2.5 bg-white border border-stone-200 rounded-lg grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
@@ -290,7 +292,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
                       onChange={(e) => handleItemChange(idx, 'productId', e.target.value)}
                       className="w-full px-2 py-1.5 border border-stone-300 rounded bg-white text-xs font-medium focus:outline-none"
                     >
-                      {products.map((p) => (
+                      {safeProducts.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} (Stok: {p.stockFinishedGoods})
                         </option>

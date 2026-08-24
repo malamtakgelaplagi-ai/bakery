@@ -129,7 +129,7 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
       </div>
 
       {/* Critical Stock Alert Bar (if any) */}
-      {(lowStockIngredients.length > 0 || lowStockProducts.length > 0) && (
+      {(safeLowStockIngredients.length > 0 || safeLowStockProducts.length > 0) && (
         <div className="bg-amber-50 border border-amber-300/80 rounded-xl p-4 flex items-start justify-between gap-3 text-amber-900 shadow-sm">
           <div className="flex items-start space-x-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -138,23 +138,23 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
                 Peringatan Stok Rendah Membutuhkan Tindakan
               </h4>
               <p className="text-xs text-amber-800 mt-0.5">
-                {lowStockIngredients.length > 0 && (
+                {safeLowStockIngredients.length > 0 && (
                   <span>
-                    <strong>{lowStockIngredients.length} bahan baku</strong> berada di bawah batas minimum (
-                    {lowStockIngredients.map((i) => i.name).slice(0, 3).join(', ')}
-                    {lowStockIngredients.length > 3 ? '...' : ''}).{' '}
+                    <strong>{safeLowStockIngredients.length} bahan baku</strong> berada di bawah batas minimum (
+                    {safeLowStockIngredients.map((i) => i.name).slice(0, 3).join(', ')}
+                    {safeLowStockIngredients.length > 3 ? '...' : ''}).{' '}
                   </span>
                 )}
-                {lowStockProducts.length > 0 && (
+                {safeLowStockProducts.length > 0 && (
                   <span>
-                    <strong>{lowStockProducts.length} produk siap jual</strong> menipis di etalase.
+                    <strong>{safeLowStockProducts.length} produk siap jual</strong> menipis di etalase.
                   </span>
                 )}
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-2 shrink-0">
-            {lowStockIngredients.length > 0 && (
+            {safeLowStockIngredients.length > 0 && (
               <button
                 onClick={() => onNavigate('inventory')}
                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-md shadow-sm transition whitespace-nowrap"
@@ -162,7 +162,7 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
                 Beli Bahan
               </button>
             )}
-            {lowStockProducts.length > 0 && (
+            {safeLowStockProducts.length > 0 && (
               <button
                 onClick={() => onNavigate('production')}
                 className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs rounded-md shadow-sm transition whitespace-nowrap"
@@ -299,12 +299,12 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
             </div>
 
             <div className="mt-4 space-y-3">
-              {productions.length === 0 ? (
+              {safeProductions.length === 0 ? (
                 <div className="text-center py-6 text-stone-400 text-xs">
                   Belum ada batch produksi aktif hari ini.
                 </div>
               ) : (
-                productions.slice(0, 3).map((prod) => {
+                safeProductions.slice(0, 3).map((prod) => {
                   const getStatusBadge = (status: string) => {
                     switch (status) {
                       case 'DRAFT':
@@ -393,7 +393,7 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
             </div>
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {products.map((prod) => {
+              {safeProducts.map((prod) => {
                 const isLow = prod.stockFinishedGoods <= prod.minStockFinishedGoods;
                 return (
                   <div
@@ -460,7 +460,7 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
             </div>
 
             <div className="mt-4 space-y-3">
-              {orders.slice(0, 4).map((order) => {
+              {safeOrders.slice(0, 4).map((order) => {
                 const getPayBadge = (status: string) => {
                   if (status === 'LUNAS') return 'bg-emerald-100 text-emerald-800';
                   if (status === 'DP') return 'bg-amber-100 text-amber-800';
@@ -499,7 +499,7 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
                         {(order.items || []).reduce((s, i) => s + (i.qty || 0), 0)} Pcs via {order.source}
                       </span>
                       <span className="capitalize text-stone-600 font-medium">
-                        {order.fulfillmentStatus.toLowerCase().replace('_', ' ')}
+                        {(order.fulfillmentStatus || 'SELESAI').toLowerCase().replace('_', ' ')}
                       </span>
                     </div>
                   </div>
@@ -532,7 +532,7 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
             </div>
 
             <div className="mt-3 space-y-2 text-xs">
-              {ingredients.slice(0, 5).map((ing) => {
+              {safeIngredients.slice(0, 5).map((ing) => {
                 const isLow = ing.stockInRecipeUnit <= ing.minStockInRecipeUnit;
                 return (
                   <div

@@ -271,12 +271,12 @@ export const WasteTracker: React.FC = () => {
                   className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
                 >
                   {type === 'BAHAN_BAKU'
-                    ? ingredients.map((i) => (
+                    ? safeIngredients.map((i) => (
                         <option key={i.id} value={i.id}>
                           {i.name} (Stok: {i.stockInRecipeUnit} {i.recipeUnit})
                         </option>
                       ))
-                    : products.map((p) => (
+                    : safeProducts.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} (Stok: {p.stockFinishedGoods} pcs)
                         </option>
