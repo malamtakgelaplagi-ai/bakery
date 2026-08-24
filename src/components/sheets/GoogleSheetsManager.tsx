@@ -54,7 +54,20 @@ export const GoogleSheetsManager: React.FC = () => {
   const [activeMode, setActiveMode] = useState<'create' | 'connect'>('create');
   const [showPopupHelp, setShowPopupHelp] = useState(false);
 
+  const [copiedDomain, setCopiedDomain] = useState(false);
+
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'pusakabakery.vercel.app';
+  const isUnauthorizedDomain = syncStatusMsg?.text?.includes('Authorized Domains') || syncStatusMsg?.text?.includes('unauthorized-domain');
+  const firebaseConsoleAuthUrl = 'https://console.firebase.google.com/project/gen-lang-client-0634373997/authentication/settings';
+
+  const handleCopyHostname = () => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(currentHostname);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2000);
+    }
+  };
 
   const handleOpenInNewTab = () => {
     if (typeof window !== 'undefined') {
@@ -280,6 +293,59 @@ export const GoogleSheetsManager: React.FC = () => {
           )}
           <div className="flex-1">
             <span>{syncStatusMsg.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Authorized Domain Guide (Shown if unauthorized domain error occurs or in production custom domains) */}
+      {isUnauthorizedDomain && (
+        <div className="bg-rose-950/40 border border-rose-800 rounded-lg p-4 text-xs text-rose-200 space-y-3 shadow-md">
+          <div className="flex items-center space-x-2 font-bold text-rose-300 text-sm">
+            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>Cara Mendaftarkan Domain ({currentHostname}) ke Firebase Console:</span>
+          </div>
+          <p className="text-stone-300 text-[11px] leading-relaxed">
+            Google Firebase Authentication memerlukan setiap domain baru (seperti Vercel / Netlify / Custom Domain) didaftarkan di daftar <strong>Authorized domains</strong> sebelum dapat melakukan login.
+          </p>
+
+          <div className="bg-stone-950/70 border border-stone-800 rounded-lg p-3 space-y-2 text-[11px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-stone-800">
+              <span className="text-stone-400">1. Salin Nama Domain Anda:</span>
+              <div className="flex items-center space-x-2">
+                <code className="bg-stone-900 px-2.5 py-1 rounded text-amber-300 font-mono font-bold border border-stone-700">
+                  {currentHostname}
+                </code>
+                <button
+                  onClick={handleCopyHostname}
+                  className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded font-semibold transition border border-stone-700"
+                >
+                  {copiedDomain ? '✓ Tersalin' : 'Salin Domain'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+              <span className="text-stone-400">2. Buka Menu Authorized Domains di Firebase:</span>
+              <a
+                href={firebaseConsoleAuthUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold transition shadow-sm"
+              >
+                <span>Buka Firebase Console Settings</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+            <div className="pt-2 text-stone-400 text-[11px] leading-relaxed space-y-1">
+              <p><strong>Langkah di Firebase Console:</strong></p>
+              <ol className="list-decimal list-inside space-y-0.5 text-stone-300 pl-1">
+                <li>Buka link di atas, gulir ke bagian <strong>Authorized domains</strong></li>
+                <li>Klik tombol <strong>Add domain</strong></li>
+                <li>Tempel (Paste) domain <code className="text-amber-300">{currentHostname}</code> lalu klik <strong>Add</strong></li>
+                <li>Kembali ke tab ini dan klik <strong>Login Akun Google</strong> kembali.</li>
+              </ol>
+            </div>
           </div>
         </div>
       )}
