@@ -1,0 +1,8 @@
+{
+  "name": "PUSAKA Bakery OS - Sistem Manajemen Produksi & Penjualan Bakery",
+  "description": "SaaS komprehensif manajemen usaha bakery: bahan baku, resep BOM & HPP otomatis, kontrol produksi batch, inventori, POS & order WhatsApp, CRM repeat order, dan laporan laba rugi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
