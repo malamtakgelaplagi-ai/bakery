@@ -1055,6 +1055,14 @@ const INITIAL_OUTLETS: Outlet[] = [
   },
 ];
 
+export const INITIAL_USERS: UserAccount[] = [
+  { id: 'user-owner', name: 'H. Suherman (Owner)', email: 'owner@pusakabakery.id', role: 'OWNER' },
+  { id: 'user-admin', name: 'Putri Rahayu (Admin)', email: 'admin@pusakabakery.id', role: 'ADMIN' },
+  { id: 'user-produksi', name: 'Chef Rendy (Head Baker)', email: 'produksi@pusakabakery.id', role: 'PRODUKSI' },
+  { id: 'user-kasir', name: 'Sinta Dewi (Kasir)', email: 'kasir@pusakabakery.id', role: 'KASIR' },
+  { id: 'user-supervisor', name: 'Agus Supervisor', email: 'supervisor@pusakabakery.id', role: 'SUPERVISOR' },
+];
+
 interface BakeryContextType {
   // Master & Business State
   businessProfile: BusinessProfile;
@@ -1063,6 +1071,8 @@ interface BakeryContextType {
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
   currentUser: UserAccount;
+  setCurrentUser: (user: UserAccount) => void;
+  users: UserAccount[];
   outlets: Outlet[];
   currentOutlet: Outlet;
   setCurrentOutlet: (outlet: Outlet) => void;
@@ -2276,6 +2286,8 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         currentRole,
         setCurrentRole,
         currentUser,
+        setCurrentUser: (user: UserAccount) => setCurrentRole(user.role),
+        users: INITIAL_USERS,
         outlets: INITIAL_OUTLETS,
         currentOutlet,
         setCurrentOutlet,
