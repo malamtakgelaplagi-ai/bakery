@@ -13,6 +13,10 @@ import {
   WasteRecord,
   Customer,
   Order,
+  OrderStatus,
+  FulfillmentStatus,
+  PaymentStatus,
+  PaymentMethod,
   Expense,
   UserRole,
   UserAccount,
@@ -1112,17 +1116,22 @@ interface BakeryContextType {
 
   // Waste Management
   wastes: WasteRecord[];
+  wasteRecords: WasteRecord[];
   recordWaste: (waste: Omit<WasteRecord, 'id'>) => void;
+  deleteWasteRecord: (id: string) => void;
 
   // Sales & Orders (POS)
   orders: Order[];
   customers: Customer[];
   createOrder: (orderData: Omit<Order, 'id' | 'invoiceNumber' | 'createdAt'>) => Order;
+  updateOrderStatus: (orderId: string, status: OrderStatus | string) => void;
+  updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus'], paidAmount?: number, method?: Order['paymentMethod']) => void;
   updateOrderPayment: (orderId: string, paymentStatus: Order['paymentStatus'], paidAmount: number, method: Order['paymentMethod']) => void;
   updateOrderFulfillment: (orderId: string, fulfillmentStatus: Order['fulfillmentStatus'], courierInfo?: { name?: string; tracking?: string }) => void;
   cancelOrder: (orderId: string, reason?: string) => void;
   addCustomer: (customer: Omit<Customer, 'id' | 'totalOrders' | 'totalSpend' | 'createdAt'>) => void;
   updateCustomer: (id: string, customer: Partial<Customer>) => void;
+  deleteCustomer: (id: string) => void;
 
   // Expenses & Finance
   expenses: Expense[];
@@ -1150,7 +1159,7 @@ interface BakeryContextType {
   googleSheetsConfig: GoogleSheetsConfig;
   isGoogleLoading: boolean;
   isGoogleSyncing: boolean;
-  signInWithGoogle: () => Promise<boolean>;
+  signInWithGoogle: () => Promise<{ success: boolean; message?: string }>;
   signOutFromGoogle: () => Promise<void>;
   createBakeryGoogleSheet: (title?: string) => Promise<{ success: boolean; spreadsheetUrl?: string; message?: string }>;
   connectGoogleSheetById: (spreadsheetId: string) => Promise<{ success: boolean; message?: string }>;
@@ -1803,20 +1812,27 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: `wst-${Date.now()}`,
     };
 
+    const wasteQty = wasteData.qty || wasteData.quantity || 0;
+
     // If it is an ingredient, deduct raw inventory
-    if (wasteData.type === 'INGREDIENT') {
+    if (wasteData.type === 'INGREDIENT' || wasteData.type === 'BAHAN_BAKU') {
       setIngredients(prev =>
-        prev.map(ing => (ing.id === wasteData.itemId ? { ...ing, stockInRecipeUnit: Math.max(0, ing.stockInRecipeUnit - wasteData.qty) } : ing))
+        prev.map(ing => (ing.id === wasteData.itemId ? { ...ing, stockInRecipeUnit: Math.max(0, ing.stockInRecipeUnit - wasteQty) } : ing))
       );
     } else {
       // If it is finished goods, deduct finished inventory
       setProducts(prev =>
-        prev.map(prod => (prod.id === wasteData.itemId ? { ...prod, stockFinishedGoods: Math.max(0, prod.stockFinishedGoods - wasteData.qty) } : prod))
+        prev.map(prod => (prod.id === wasteData.itemId ? { ...prod, stockFinishedGoods: Math.max(0, prod.stockFinishedGoods - wasteQty) } : prod))
       );
     }
 
     setWastes(prev => [newWaste, ...prev]);
-    logAction('SISTEM', 'PENCATATAN WASTE / KERUSAKAN', `Mencatat waste ${wasteData.itemName} (${wasteData.qty} ${wasteData.unit}) - ${wasteData.reason}`);
+    logAction('SISTEM', 'PENCATATAN WASTE / KERUSAKAN', `Mencatat waste ${wasteData.itemName} (${wasteQty} ${wasteData.unit}) - ${wasteData.reason}`);
+  };
+
+  const deleteWasteRecord = (id: string) => {
+    setWastes(prev => prev.filter(w => w.id !== id));
+    logAction('SISTEM', 'HAPUS RECORD WASTE', `Menghapus catatan waste ID ${id}`);
   };
 
   // Sales & Orders (POS)
@@ -1886,6 +1902,54 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return newOrder;
   };
 
+  const updateOrderStatus = (orderId: string, status: OrderStatus | string) => {
+    let fulfillmentStatus: FulfillmentStatus = 'MENUNGGU';
+    if (status === 'PENDING' || status === 'MENUNGGU') fulfillmentStatus = 'MENUNGGU';
+    else if (status === 'PROCESSED' || status === 'DIPROSES') fulfillmentStatus = 'DIPROSES';
+    else if (status === 'SHIPPED' || status === 'DIKIRIM') fulfillmentStatus = 'DIKIRIM';
+    else if (status === 'DELIVERED' || status === 'SIAP_DIAMBIL') fulfillmentStatus = 'SIAP_DIAMBIL';
+    else if (status === 'COMPLETED' || status === 'SELESAI') fulfillmentStatus = 'SELESAI';
+    else if (status === 'CANCELLED' || status === 'BATAL') fulfillmentStatus = 'BATAL';
+
+    setOrders(prev =>
+      prev.map(o => {
+        if (o.id !== orderId) return o;
+        return {
+          ...o,
+          orderStatus: status as OrderStatus,
+          fulfillmentStatus,
+        };
+      })
+    );
+    logAction('PESANAN', 'UPDATE STATUS PESANAN', `Pesanan ID ${orderId} diubah status menjadi ${status}`);
+  };
+
+  const updatePaymentStatus = (
+    orderId: string,
+    paymentStatus: Order['paymentStatus'],
+    paidAmount?: number,
+    method?: Order['paymentMethod']
+  ) => {
+    setOrders(prev =>
+      prev.map(o => {
+        if (o.id !== orderId) return o;
+        const finalPaid =
+          paidAmount !== undefined
+            ? paidAmount
+            : paymentStatus === 'LUNAS'
+            ? o.totalAmount
+            : o.paidAmount;
+        return {
+          ...o,
+          paymentStatus,
+          paidAmount: finalPaid,
+          paymentMethod: method || o.paymentMethod,
+        };
+      })
+    );
+    logAction('PESANAN', 'UPDATE STATUS PEMBAYARAN', `Pesanan ID ${orderId} update status bayar ${paymentStatus}`);
+  };
+
   const updateOrderPayment = (orderId: string, paymentStatus: Order['paymentStatus'], paidAmount: number, method: Order['paymentMethod']) => {
     setOrders(prev =>
       prev.map(o => (o.id === orderId ? { ...o, paymentStatus, paidAmount, paymentMethod: method } : o))
@@ -1943,6 +2007,11 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateCustomer = (id: string, patch: Partial<Customer>) => {
     setCustomers(prev => prev.map(c => (c.id === id ? { ...c, ...patch } : c)));
     logAction('PESANAN', 'UPDATE PELANGGAN', `Memperbarui data pelanggan ID ${id}`);
+  };
+
+  const deleteCustomer = (id: string) => {
+    setCustomers(prev => prev.filter(c => c.id !== id));
+    logAction('PESANAN', 'HAPUS PELANGGAN', `Menghapus data pelanggan ID ${id}`);
   };
 
   // Expenses CRUD
@@ -2029,7 +2098,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Google Sheets Action Handlers
-  const signInWithGoogle = async (): Promise<boolean> => {
+  const signInWithGoogle = async (): Promise<{ success: boolean; message?: string }> => {
     try {
       setIsGoogleLoading(true);
       const res = await googleSignIn();
@@ -2037,13 +2106,14 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setGoogleUser(res.user);
         setGoogleAccessToken(res.accessToken);
         logAction('SISTEM', 'GOOGLE LOGIN', `Berhasil login Google: ${res.user.email}`);
-        return true;
+        return { success: true, message: `Berhasil login sebagai ${res.user.displayName || res.user.email}` };
       }
-      return false;
+      return { success: false, message: 'Login tidak mengembalikan token akses Google.' };
     } catch (err: any) {
       console.error('Google sign in error:', err);
-      logAction('SISTEM', 'GOOGLE LOGIN GAGAL', err?.message || 'Login Google gagal');
-      return false;
+      const msg = err?.message || 'Gagal melakukan login Google.';
+      logAction('SISTEM', 'GOOGLE LOGIN GAGAL', msg);
+      return { success: false, message: msg };
     } finally {
       setIsGoogleLoading(false);
     }
@@ -2314,15 +2384,20 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         advanceProductionStatus,
         cancelProductionRun,
         wastes,
+        wasteRecords: wastes,
         recordWaste,
+        deleteWasteRecord,
         orders,
         customers,
         createOrder,
+        updateOrderStatus,
+        updatePaymentStatus,
         updateOrderPayment,
         updateOrderFulfillment,
         cancelOrder,
         addCustomer,
         updateCustomer,
+        deleteCustomer,
         expenses,
         addExpense,
         deleteExpense,

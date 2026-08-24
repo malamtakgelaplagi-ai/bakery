@@ -17,6 +17,7 @@ import {
   X,
   Menu,
   MoreHorizontal,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useBakery } from '../../context/BakeryContext';
 
@@ -40,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     pendingOrdersCount,
     resetDemoData,
     currentRole,
+    googleSheetsConfig,
   } = useBakery();
 
   const menuItems = [
@@ -100,6 +102,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Laba Rugi & Kas',
       icon: PieChart,
       badge: null,
+    },
+    {
+      id: 'sheets',
+      label: 'Google Sheets DB',
+      icon: FileSpreadsheet,
+      badge: googleSheetsConfig?.spreadsheetId ? 'Aktif' : 'Cloud',
+      badgeColor: googleSheetsConfig?.spreadsheetId
+        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
+        : 'bg-stone-700 text-stone-300 border-stone-600',
     },
     {
       id: 'settings',

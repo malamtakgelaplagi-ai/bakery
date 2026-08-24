@@ -49,14 +49,23 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
-      throw new Error('Gagal mendapatkan token akses dari Google.');
+      throw new Error('Gagal mendapatkan token akses Google. Pastikan Anda mengizinkan hak akses Google Sheets saat diminta.');
     }
 
     cachedAccessToken = credential.accessToken;
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
-    console.error('Google Sign In Error:', error);
-    throw error;
+    console.error('Google Sign In Error Details:', error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Jendela popup login ditutup sebelum selesai. Silakan klik Login lagi dan selesaikan pilihan akun.');
+    } else if (error.code === 'auth/popup-blocked') {
+      throw new Error('Popup login diblokir browser. Izinkan popup pada bilah URL browser (ikon jendela berpalang merah) lalu klik Login lagi.');
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      throw new Error('Permintaan login sebelumnya dibatalkan.');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      throw new Error(`Domain (${window.location.hostname}) belum didaftarkan di Firebase Authorized Domains.`);
+    }
+    throw new Error(error.message || 'Gagal login dengan Google.');
   } finally {
     isSigningIn = false;
   }

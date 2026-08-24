@@ -18,6 +18,9 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Settings2,
+  HelpCircle,
+  ShieldAlert,
+  Info,
 } from 'lucide-react';
 import { useBakery } from '../../context/BakeryContext';
 
@@ -39,6 +42,8 @@ export const GoogleSheetsManager: React.FC = () => {
     ingredients,
     orders,
     productions,
+    exportDataJson,
+    importDataJson,
   } = useBakery();
 
   const [customTitle, setCustomTitle] = useState(
@@ -47,14 +52,28 @@ export const GoogleSheetsManager: React.FC = () => {
   const [existingSheetInput, setExistingSheetInput] = useState('');
   const [syncStatusMsg, setSyncStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeMode, setActiveMode] = useState<'create' | 'connect'>('create');
+  const [showPopupHelp, setShowPopupHelp] = useState(false);
+
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+  const handleOpenInNewTab = () => {
+    if (typeof window !== 'undefined') {
+      window.open(window.location.href, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setSyncStatusMsg(null);
-    const ok = await signInWithGoogle();
-    if (ok) {
-      setSyncStatusMsg({ type: 'success', text: 'Berhasil login dengan Google.' });
+    const res = await signInWithGoogle();
+    if (res.success) {
+      setSyncStatusMsg({ type: 'success', text: res.message || 'Berhasil login dengan Google.' });
+      setShowPopupHelp(false);
     } else {
-      setSyncStatusMsg({ type: 'error', text: 'Gagal login. Pastikan popup tidak diblokir oleh browser.' });
+      setSyncStatusMsg({
+        type: 'error',
+        text: res.message || 'Gagal login. Pastikan popup tidak diblokir oleh browser.',
+      });
+      setShowPopupHelp(true);
     }
   };
 
@@ -117,6 +136,39 @@ export const GoogleSheetsManager: React.FC = () => {
     }
   };
 
+  const handleDownloadBackup = () => {
+    const jsonStr = exportDataJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-${businessProfile.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setSyncStatusMsg({ type: 'success', text: 'File cadangan data sistem berhasil diunduh.' });
+  };
+
+  const handleUploadBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const ok = importDataJson(text);
+        if (ok) {
+          setSyncStatusMsg({ type: 'success', text: 'Data dari file cadangan berhasil dipulihkan!' });
+        } else {
+          setSyncStatusMsg({ type: 'error', text: 'Format file cadangan tidak valid.' });
+        }
+      } catch (err: any) {
+        setSyncStatusMsg({ type: 'error', text: 'Gagal membaca berkas cadangan.' });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="bg-stone-900 border border-stone-800 rounded-xl p-5 sm:p-6 text-stone-100 shadow-lg space-y-6">
       {/* Header */}
@@ -172,7 +224,17 @@ export const GoogleSheetsManager: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div>
+          <div className="flex items-center space-x-2">
+            {isIframe && (
+              <button
+                onClick={handleOpenInNewTab}
+                className="inline-flex items-center space-x-1.5 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg text-xs font-semibold transition border border-stone-700"
+                title="Buka aplikasi di tab baru jika browser memblokir popup di dalam panel iframe"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                <span>Buka di Tab Baru</span>
+              </button>
+            )}
             <button
               onClick={handleGoogleSignIn}
               disabled={isGoogleLoading}
@@ -205,18 +267,61 @@ export const GoogleSheetsManager: React.FC = () => {
       {/* Alert Status Feedback */}
       {syncStatusMsg && (
         <div
-          className={`p-3 rounded-lg text-xs flex items-center space-x-2 ${
+          className={`p-3 rounded-lg text-xs flex items-start space-x-2.5 ${
             syncStatusMsg.type === 'success'
               ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-300'
               : 'bg-rose-950/60 border border-rose-800 text-rose-300'
           }`}
         >
           {syncStatusMsg.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
           ) : (
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
           )}
-          <span>{syncStatusMsg.text}</span>
+          <div className="flex-1">
+            <span>{syncStatusMsg.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Troubleshooting Guide if blocked or help toggled */}
+      {(!googleUser || showPopupHelp) && (
+        <div className="bg-amber-950/30 border border-amber-800/60 rounded-lg p-4 text-xs text-amber-200/90 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 font-bold text-amber-300">
+              <ShieldAlert className="w-4 h-4" />
+              <span>Petunjuk Jika Pop-Up Login Google Terblokir di Browser</span>
+            </div>
+            <button
+              onClick={() => setShowPopupHelp(!showPopupHelp)}
+              className="text-[11px] underline text-amber-400 hover:text-amber-300"
+            >
+              {showPopupHelp ? 'Sembunyikan' : 'Bantuan Popup'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 text-[11px] text-stone-300">
+            <div className="bg-stone-950/50 p-2.5 rounded border border-stone-800 space-y-1">
+              <div className="font-semibold text-amber-400">Cara 1: Izinkan Pop-Up di Bar Alamat URL</div>
+              <p className="text-stone-400 leading-relaxed">
+                Di sebelah kanan atau kiri kolom URL browser, klik ikon <strong>"Pop-up diblokir"</strong> (atau ikon gembok) ➔ Pilih <strong>"Selalu izinkan pop-up dan pengalihan"</strong> ➔ Klik tombol <em>Login Akun Google</em> kembali.
+              </p>
+            </div>
+
+            <div className="bg-stone-950/50 p-2.5 rounded border border-stone-800 space-y-1">
+              <div className="font-semibold text-amber-400">Cara 2: Buka di Tab Penuh (Direkomendasikan)</div>
+              <p className="text-stone-400 leading-relaxed mb-2">
+                Jika Anda sedang membuka aplikasi di dalam jendela pratinjau preview, buka tab browser baru agar pop-up tidak terhambat.
+              </p>
+              <button
+                onClick={handleOpenInNewTab}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-400 text-stone-950 font-bold rounded text-[11px] hover:bg-amber-300 transition"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Buka Aplikasi di Tab Baru</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -232,14 +337,16 @@ export const GoogleSheetsManager: React.FC = () => {
               Login dengan Google untuk membuat Spreadsheet database cloud otomatis yang dapat dibaca (Read) dan ditulis (Write) secara langsung.
             </p>
           </div>
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading}
-            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition shadow-sm"
-          >
-            <span>Masuk dengan Google</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="flex items-center justify-center space-x-3 pt-2">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isGoogleLoading}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+            >
+              <span>Masuk dengan Google</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -304,86 +411,61 @@ export const GoogleSheetsManager: React.FC = () => {
               <button
                 onClick={handleCreateSheet}
                 disabled={isGoogleSyncing}
-                className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
               >
-                {isGoogleSyncing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Membuat Spreadsheet di Google Drive...</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Buat & Sinkronkan Data Sekarang</span>
-                  </>
-                )}
+                <PlusCircle className="w-4 h-4" />
+                <span>{isGoogleSyncing ? 'Sedang Membuat Database...' : 'Buat & Sinkronkan Data Sekarang'}</span>
               </button>
             </div>
           ) : (
             <div className="bg-stone-950/60 border border-stone-800 rounded-lg p-4 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  Spreadsheet ID atau URL Lengkap
+                  Spreadsheet ID atau Link Google Sheets
                 </label>
                 <input
                   type="text"
                   value={existingSheetInput}
                   onChange={(e) => setExistingSheetInput(e.target.value)}
                   className="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                  placeholder="https://docs.google.com/spreadsheets/d/1aBcDeFg.../edit atau ID saja"
+                  placeholder="https://docs.google.com/spreadsheets/d/1A2B3C.../edit atau ID Spreadsheet"
                 />
                 <p className="text-[11px] text-stone-500 mt-1">
-                  Pastikan akun Google Anda memiliki hak edit pada spreadsheet tersebut.
+                  Pastikan akun Google yang Anda gunakan telah memiliki hak akses edit pada spreadsheet tersebut.
                 </p>
               </div>
 
               <button
                 onClick={handleConnectSheet}
                 disabled={isGoogleSyncing}
-                className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm disabled:opacity-50"
               >
-                {isGoogleSyncing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Menghubungkan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="w-4 h-4" />
-                    <span>Hubungkan Spreadsheet</span>
-                  </>
-                )}
+                <Link2 className="w-4 h-4" />
+                <span>{isGoogleSyncing ? 'Menghubungkan...' : 'Hubungkan ke Database Ini'}</span>
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* State 3: Connected to Google Spreadsheet */}
+      {/* State 3: Logged In AND Connected */}
       {googleUser && googleSheetsConfig.spreadsheetId && (
         <div className="space-y-5">
           {/* Active Sheet Card */}
-          <div className="bg-stone-950 border border-stone-800 rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="bg-stone-950/80 border border-emerald-500/30 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="text-xs text-stone-400">File Spreadsheet Aktif:</div>
-              <div className="text-sm font-bold text-white flex items-center space-x-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>{googleSheetsConfig.spreadsheetTitle || 'Database PUSAKA Bakery'}</span>
+              <div className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider flex items-center space-x-1.5">
+                <Database className="w-3.5 h-3.5" />
+                <span>Database Google Sheets Aktif</span>
               </div>
-              <div className="text-[11px] text-stone-500 font-mono truncate max-w-sm">
-                ID: {googleSheetsConfig.spreadsheetId}
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
-                {googleSheetsConfig.lastSyncedAt && (
-                  <div className="text-[11px] text-emerald-400 font-medium">
-                    Terakhir Sync (Tulis): {googleSheetsConfig.lastSyncedAt}
-                  </div>
-                )}
-                {googleSheetsConfig.lastLoadedAt && (
-                  <div className="text-[11px] text-sky-400 font-medium">
-                    Terakhir Muat (Baca): {googleSheetsConfig.lastLoadedAt}
-                  </div>
-                )}
+              <h4 className="text-sm font-bold text-white">
+                {googleSheetsConfig.spreadsheetTitle || 'PUSAKA Bakery Database'}
+              </h4>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400">
+                <span className="font-mono text-[11px] bg-stone-800/80 px-2 py-0.5 rounded text-stone-300">
+                  ID: {googleSheetsConfig.spreadsheetId}
+                </span>
+                <span>Terakhir Sinkron: {googleSheetsConfig.lastSyncedAt || 'Baru saja'}</span>
               </div>
             </div>
 
@@ -392,31 +474,29 @@ export const GoogleSheetsManager: React.FC = () => {
                 <a
                   href={googleSheetsConfig.spreadsheetUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-1.5 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold transition"
+                  rel="noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold transition border border-stone-700"
                 >
-                  <span>Buka di Drive</span>
+                  <span>Buka di Google Drive</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
 
-              {/* READ / IMPORT BUTTON */}
               <button
                 onClick={handleLoadFromSheets}
                 disabled={isGoogleSyncing}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-sky-500 hover:bg-sky-400 text-stone-950 rounded-lg text-xs font-bold transition disabled:opacity-50"
-                title="Baca dan muat data terbaru dari Google Sheets ke Aplikasi"
+                className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-sm"
+                title="Tarik data terbaru dari Google Sheets ke Aplikasi"
               >
-                <ArrowDownToLine className={`w-3.5 h-3.5 ${isGoogleSyncing ? 'animate-bounce' : ''}`} />
+                <ArrowDownToLine className={`w-3.5 h-3.5 ${isGoogleSyncing ? 'animate-spin' : ''}`} />
                 <span>{isGoogleSyncing ? 'Memuat...' : 'Baca Data (Pull)'}</span>
               </button>
 
-              {/* WRITE / EXPORT BUTTON */}
               <button
                 onClick={handleManualSync}
                 disabled={isGoogleSyncing}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-lg text-xs font-bold transition disabled:opacity-50"
-                title="Tulis dan timpa semua data aplikasi ke Google Sheets"
+                className="inline-flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-sm"
+                title="Kirim semua data aplikasi saat ini ke Google Sheets"
               >
                 <ArrowUpFromLine className={`w-3.5 h-3.5 ${isGoogleSyncing ? 'animate-spin' : ''}`} />
                 <span>{isGoogleSyncing ? 'Menyinkronkan...' : 'Kirim Data (Push)'}</span>
@@ -491,6 +571,33 @@ export const GoogleSheetsManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Offline Backup & Restore Section (Always Accessible) */}
+      <div className="pt-4 border-t border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="space-y-0.5">
+          <div className="font-semibold text-stone-300 flex items-center space-x-1.5">
+            <Database className="w-3.5 h-3.5 text-amber-400" />
+            <span>Cadangan & Ekspor Data Lokal (Offline JSON / Backup)</span>
+          </div>
+          <p className="text-[11px] text-stone-500">
+            Ekspor seluruh database (Resep, HPP, Stok, Pesanan, CRM) ke berkas file cadangan kapan saja tanpa memerlukan izin pop-up.
+          </p>
+        </div>
+        <div className="flex items-center space-x-2 shrink-0">
+          <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg text-xs font-medium cursor-pointer border border-stone-700 transition">
+            <Upload className="w-3.5 h-3.5 text-amber-400" />
+            <span>Pulihkan File</span>
+            <input type="file" accept=".json" onChange={handleUploadBackup} className="hidden" />
+          </label>
+          <button
+            onClick={handleDownloadBackup}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg text-xs font-medium border border-stone-700 transition"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Unduh Cadangan</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -181,6 +181,50 @@ export async function getSpreadsheetDetails(
   };
 }
 
+/**
+ * Ensures all required sheet tabs exist in the spreadsheet, creating any missing ones.
+ */
+export async function ensureSheetsExist(spreadsheetId: string): Promise<void> {
+  const headers = await getAuthHeader();
+  const response = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}?fields=sheets.properties`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Gagal mengakses metadata spreadsheet (${response.status})`);
+  }
+
+  const data = await response.json();
+  const existingTitles = new Set(
+    (data.sheets || []).map((s: any) => s.properties?.title)
+  );
+
+  const requiredSheets = Object.values(SHEET_NAMES);
+  const missing = requiredSheets.filter((title) => !existingTitles.has(title));
+
+  if (missing.length > 0) {
+    const addSheetRequests = missing.map((title) => ({
+      addSheet: {
+        properties: {
+          title,
+          gridProperties: { rowCount: 500, columnCount: 16 },
+        },
+      },
+    }));
+
+    const updateRes = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}:batchUpdate`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ requests: addSheetRequests }),
+    });
+
+    if (!updateRes.ok) {
+      console.warn('Notice: Some sheet tabs could not be auto-created in batch.');
+    }
+  }
+}
+
 // -------------------------------------------------------------
 // READ / IMPORT METHODS FROM GOOGLE SHEETS
 // -------------------------------------------------------------
@@ -203,8 +247,8 @@ export async function readSheetRange(
   );
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Gagal membaca data dari sheet (${response.status})`);
+    // If sheet range or tab is not found or empty, return empty array
+    return [];
   }
 
   const data = await response.json();
@@ -450,6 +494,9 @@ export async function syncAllDataToGoogleSheets(
   data: BakeryStateExport
 ): Promise<void> {
   const headers = await getAuthHeader();
+
+  // Ensure all sheet tabs exist before batch updating ranges
+  await ensureSheetsExist(spreadsheetId);
 
   // 1. Orders Sheet
   const orderHeaders = [

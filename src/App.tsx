@@ -12,6 +12,7 @@ import { CustomerList } from './components/crm/CustomerList';
 import { WasteTracker } from './components/waste/WasteTracker';
 import { FinancialReports } from './components/reports/FinancialReports';
 import { SettingsView } from './components/settings/SettingsView';
+import { GoogleSheetsManager } from './components/sheets/GoogleSheetsManager';
 import { NewOrderModal } from './components/pos/NewOrderModal';
 import { NewProductionModal } from './components/production/NewProductionModal';
 
@@ -47,6 +48,26 @@ const AppContent: React.FC = () => {
         return <WasteTracker />;
       case 'finance':
         return <FinancialReports />;
+      case 'sheets':
+      case 'googlesheets':
+        return (
+          <div className="space-y-6 max-w-5xl">
+            <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Integrasi Cloud Database
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-stone-900 mt-1">
+                Google Sheets Database Management
+              </h2>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Penyimpanan data real-time, sinkronisasi dua arah, backup otomatis, dan ekspor spreadsheet untuk toko bakery Anda.
+              </p>
+            </div>
+            <GoogleSheetsManager />
+          </div>
+        );
       case 'settings':
         return <SettingsView />;
       default:
