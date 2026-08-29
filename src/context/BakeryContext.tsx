@@ -1071,11 +1071,61 @@ const INITIAL_OUTLETS: Outlet[] = [
 ];
 
 export const INITIAL_USERS: UserAccount[] = [
-  { id: 'user-owner', name: 'H. Suherman (Owner)', email: 'owner@pusakabakery.id', role: 'OWNER' },
-  { id: 'user-admin', name: 'Putri Rahayu (Admin)', email: 'admin@pusakabakery.id', role: 'ADMIN' },
-  { id: 'user-produksi', name: 'Chef Rendy (Head Baker)', email: 'produksi@pusakabakery.id', role: 'PRODUKSI' },
-  { id: 'user-kasir', name: 'Sinta Dewi (Kasir)', email: 'kasir@pusakabakery.id', role: 'KASIR' },
-  { id: 'user-supervisor', name: 'Agus Supervisor', email: 'supervisor@pusakabakery.id', role: 'SUPERVISOR' },
+  {
+    id: 'user-owner',
+    name: 'H. Suherman',
+    title: 'Owner & Pemilik Usaha',
+    email: 'owner@pusakabakery.id',
+    phone: '081234567890',
+    role: 'OWNER',
+    status: 'active',
+    pin: '1234',
+    notes: 'Pemilik usaha dengan hak akses penuh ke seluruh modul sistem dan laporan keuangan.',
+  },
+  {
+    id: 'user-admin',
+    name: 'Putri Rahayu',
+    title: 'Admin Operasional & Purchasing',
+    email: 'admin@pusakabakery.id',
+    phone: '081298765432',
+    role: 'ADMIN',
+    status: 'active',
+    pin: '2345',
+    notes: 'Mengelola pembelian bahan baku, database resep HPP, data pelanggan, dan pencatatan operasional.',
+  },
+  {
+    id: 'user-produksi',
+    name: 'Chef Rendy',
+    title: 'Head Baker & Dapur Produksi',
+    email: 'produksi@pusakabakery.id',
+    phone: '081311223344',
+    role: 'PRODUKSI',
+    status: 'active',
+    pin: '3456',
+    notes: 'Bertanggung jawab atas SPK Batch Produksi, kalkulasi timbangan bahan resep, dan quality control.',
+  },
+  {
+    id: 'user-kasir',
+    name: 'Sinta Dewi',
+    title: 'Kasir Frontliner & POS Outlet',
+    email: 'kasir@pusakabakery.id',
+    phone: '081399887766',
+    role: 'KASIR',
+    status: 'active',
+    pin: '4567',
+    notes: 'Melayani penjualan kasir POS, cetak struk nota kasir, WhatsApp invoice, dan penerimaan pembayaran.',
+  },
+  {
+    id: 'user-supervisor',
+    name: 'Agus Supervisor',
+    title: 'Supervisor Shift & Logistik',
+    email: 'supervisor@pusakabakery.id',
+    phone: '081255667788',
+    role: 'SUPERVISOR',
+    status: 'active',
+    pin: '5678',
+    notes: 'Mengawasi alur stok harian, pencatatan waste kerusakan bahan/produk, dan supervisi operasional toko.',
+  },
 ];
 
 interface BakeryContextType {
@@ -1088,6 +1138,10 @@ interface BakeryContextType {
   currentUser: UserAccount;
   setCurrentUser: (user: UserAccount) => void;
   users: UserAccount[];
+  updateUser: (id: string, patch: Partial<UserAccount>) => void;
+  addUser: (user: Omit<UserAccount, 'id'>) => UserAccount;
+  deleteUser: (id: string) => { success: boolean; message: string };
+  resetUsersToDefault: () => void;
   outlets: Outlet[];
   currentOutlet: Outlet;
   setCurrentOutlet: (outlet: Outlet) => void;
@@ -1293,7 +1347,27 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return Array.isArray(list) ? list : INITIAL_AUDIT_LOGS;
   });
 
-  const [currentRole, setCurrentRole] = useState<UserRole>('OWNER');
+  // Staff & User Accounts State
+  const [users, setUsers] = useState<UserAccount[]>(() => {
+    const list = safeParseJson<UserAccount[]>(`${STORAGE_KEY}_USERS`, INITIAL_USERS);
+    if (!Array.isArray(list) || list.length === 0) return INITIAL_USERS;
+    return list;
+  });
+
+  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_ACTIVE_USER_ID`);
+    return saved || 'user-owner';
+  });
+
+  // Current active user representation
+  const currentUser: UserAccount =
+    users.find(u => u.id === currentUserId) ||
+    users.find(u => u.role === 'OWNER') ||
+    users[0] ||
+    INITIAL_USERS[0];
+
+  const currentRole: UserRole = currentUser.role;
+
   const [currentOutlet, setCurrentOutlet] = useState<Outlet>(INITIAL_OUTLETS[0]);
 
   // Google Sheets state
@@ -1345,6 +1419,8 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Sync to localStorage
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_PROFILE`, JSON.stringify(businessProfile));
+    localStorage.setItem(`${STORAGE_KEY}_USERS`, JSON.stringify(users));
+    localStorage.setItem(`${STORAGE_KEY}_ACTIVE_USER_ID`, currentUserId);
     localStorage.setItem(`${STORAGE_KEY}_INGREDIENTS`, JSON.stringify(ingredients));
     localStorage.setItem(`${STORAGE_KEY}_SUPPLIERS`, JSON.stringify(suppliers));
     localStorage.setItem(`${STORAGE_KEY}_PURCHASES`, JSON.stringify(purchases));
@@ -1356,23 +1432,81 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem(`${STORAGE_KEY}_EXPENSES`, JSON.stringify(expenses));
     localStorage.setItem(`${STORAGE_KEY}_WASTES`, JSON.stringify(wastes));
     localStorage.setItem(`${STORAGE_KEY}_LOGS`, JSON.stringify(auditLogs));
-  }, [businessProfile, ingredients, suppliers, purchases, recipes, products, productions, customers, orders, expenses, wastes, auditLogs]);
+  }, [businessProfile, users, currentUserId, ingredients, suppliers, purchases, recipes, products, productions, customers, orders, expenses, wastes, auditLogs]);
 
-  // Current User representation based on role
-  const currentUser: UserAccount = {
-    id: `user-${currentRole.toLowerCase()}`,
-    name:
-      currentRole === 'OWNER'
-        ? 'H. Suherman (Owner)'
-        : currentRole === 'ADMIN'
-        ? 'Putri Rahayu (Admin)'
-        : currentRole === 'PRODUKSI'
-        ? 'Chef Rendy (Head Baker)'
-        : currentRole === 'KASIR'
-        ? 'Sinta Dewi (Kasir)'
-        : 'Agus Supervisor',
-    email: `${currentRole.toLowerCase()}@pusakabakery.id`,
-    role: currentRole,
+  // Switch Active User / Role Handlers
+  const setCurrentUser = (user: UserAccount) => {
+    setCurrentUserId(user.id);
+    localStorage.setItem(`${STORAGE_KEY}_ACTIVE_USER_ID`, user.id);
+    logAction('PENGATURAN', 'GANTI AKUN AKTIF', `Beralih ke akun ${user.name} (${user.role})`);
+  };
+
+  const setCurrentRole = (role: UserRole) => {
+    const match =
+      users.find(u => u.role === role && u.status !== 'inactive') ||
+      users.find(u => u.role === role) ||
+      users[0];
+    if (match) {
+      setCurrentUserId(match.id);
+      localStorage.setItem(`${STORAGE_KEY}_ACTIVE_USER_ID`, match.id);
+      logAction('PENGATURAN', 'GANTI ROLE AKTIF', `Beralih ke hak akses ${role} (${match.name})`);
+    }
+  };
+
+  // User Management Actions
+  const updateUser = (id: string, patch: Partial<UserAccount>) => {
+    setUsers(prev => {
+      const updated = prev.map(u => (u.id === id ? { ...u, ...patch } : u));
+      return updated;
+    });
+    // If Owner name is updated, also sync with business profile owner name
+    const target = users.find(u => u.id === id);
+    if (patch.name && (target?.role === 'OWNER' || patch.role === 'OWNER')) {
+      setBusinessProfile(prev => ({ ...prev, ownerName: patch.name || prev.ownerName }));
+    }
+    logAction('PENGATURAN', 'UPDATE USER', `Memperbarui akun staff ${patch.name || target?.name || id}`);
+  };
+
+  const addUser = (userData: Omit<UserAccount, 'id'>): UserAccount => {
+    const newUser: UserAccount = {
+      ...userData,
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      status: userData.status || 'active',
+    };
+    setUsers(prev => [...prev, newUser]);
+    logAction('PENGATURAN', 'TAMBAH USER', `Menambahkan akun staff baru: ${newUser.name} (${newUser.role})`);
+    return newUser;
+  };
+
+  const deleteUser = (id: string): { success: boolean; message: string } => {
+    const target = users.find(u => u.id === id);
+    if (!target) return { success: false, message: 'Data staff tidak ditemukan.' };
+
+    if (target.role === 'OWNER') {
+      const ownerCount = users.filter(u => u.role === 'OWNER').length;
+      if (ownerCount <= 1) {
+        return { success: false, message: 'Tidak dapat menghapus satu-satunya akun Owner usaha.' };
+      }
+    }
+
+    setUsers(prev => prev.filter(u => u.id !== id));
+    if (currentUserId === id) {
+      const remaining = users.filter(u => u.id !== id);
+      if (remaining.length > 0) {
+        setCurrentUserId(remaining[0].id);
+        localStorage.setItem(`${STORAGE_KEY}_ACTIVE_USER_ID`, remaining[0].id);
+      }
+    }
+    logAction('PENGATURAN', 'HAPUS USER', `Menghapus akun staff: ${target.name} (${target.role})`);
+    return { success: true, message: `Akun staff ${target.name} berhasil dihapus.` };
+  };
+
+  const resetUsersToDefault = () => {
+    setUsers(INITIAL_USERS);
+    setCurrentUserId('user-owner');
+    localStorage.setItem(`${STORAGE_KEY}_USERS`, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(`${STORAGE_KEY}_ACTIVE_USER_ID`, 'user-owner');
+    logAction('PENGATURAN', 'RESET USERS', 'Mereset daftar akun staff ke setelan bawaan');
   };
 
   // Helper to log audit actions
@@ -2072,6 +2206,8 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const resetDemoData = () => {
     localStorage.clear();
     setBusinessProfile(INITIAL_PROFILE);
+    setUsers(INITIAL_USERS);
+    setCurrentUserId('user-owner');
     setIngredients(INITIAL_INGREDIENTS);
     setSuppliers(INITIAL_SUPPLIERS);
     setPurchases(INITIAL_PURCHASES);
@@ -2090,6 +2226,8 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const exportDataJson = () => {
     const backup = {
       businessProfile,
+      users,
+      activeUserId: currentUserId,
       ingredients,
       suppliers,
       purchases,
@@ -2112,6 +2250,11 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const data = JSON.parse(jsonStr);
       if (data.businessProfile) setBusinessProfile(data.businessProfile);
+      if (data.users && Array.isArray(data.users)) setUsers(data.users);
+      if (data.activeUserId) {
+        setCurrentUserId(data.activeUserId);
+        localStorage.setItem(`${STORAGE_KEY}_ACTIVE_USER_ID`, data.activeUserId);
+      }
       if (data.ingredients) setIngredients(data.ingredients);
       if (data.suppliers) setSuppliers(data.suppliers);
       if (data.purchases) setPurchases(data.purchases);
@@ -2511,8 +2654,12 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         currentRole,
         setCurrentRole,
         currentUser,
-        setCurrentUser: (user: UserAccount) => setCurrentRole(user.role),
-        users: INITIAL_USERS,
+        setCurrentUser,
+        users,
+        updateUser,
+        addUser,
+        deleteUser,
+        resetUsersToDefault,
         outlets: INITIAL_OUTLETS,
         currentOutlet,
         setCurrentOutlet,

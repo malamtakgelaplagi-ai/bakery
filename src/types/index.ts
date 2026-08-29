@@ -348,6 +348,10 @@ export interface UserAccount {
   role: UserRole;
   avatar?: string;
   phone?: string;
+  title?: string;
+  pin?: string;
+  notes?: string;
+  status?: 'active' | 'inactive';
 }
 
 export interface AuditLog {

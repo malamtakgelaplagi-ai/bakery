@@ -2,22 +2,17 @@ import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import { BusinessProfile } from '../../types';
 import { GoogleSheetsManager } from '../sheets/GoogleSheetsManager';
+import { StaffManager } from './StaffManager';
 import {
   Store,
   Save,
   Users,
-  Shield,
   RefreshCw,
   CheckCircle2,
-  Phone,
-  MapPin,
-  FileText,
-  DollarSign,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
-  const { businessProfile, updateBusinessProfile, currentUser, users, setCurrentUser } =
-    useBakery();
+  const { businessProfile, updateBusinessProfile } = useBakery();
 
   const [form, setForm] = useState<BusinessProfile>({ ...businessProfile });
   const [isSaved, setIsSaved] = useState(false);
@@ -51,13 +46,16 @@ export const SettingsView: React.FC = () => {
             </span>
           </div>
           <h2 className="text-xl font-bold text-stone-900 mt-1">
-            Profil Bakery, Identitas Nota & Pengguna
+            Profil Usaha, Staff Multi-Role & Google Sheets
           </h2>
           <p className="text-xs text-stone-500 mt-0.5">
-            Konfigurasi informasi toko yang tampil pada invoice kasir, WhatsApp, dan integrasi Google Sheets.
+            Konfigurasi informasi toko untuk nota & WhatsApp, kelola akun staff (Owner, Admin, Produksi, Kasir, Supervisor), serta sinkronisasi database.
           </p>
         </div>
       </div>
+
+      {/* Staff & Multi-Role Manager */}
+      <StaffManager />
 
       {/* Google Sheets Database Section */}
       <GoogleSheetsManager />
@@ -182,52 +180,6 @@ export const SettingsView: React.FC = () => {
         </div>
       </form>
 
-      {/* Staff & Multi-User Switcher */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-4 text-xs">
-        <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-          <span className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-            <Users className="w-4 h-4 text-amber-600" />
-            <span>Staff & Multi-Role Pengguna (Simulasi Akun Aktif)</span>
-          </span>
-          <span className="text-stone-500 text-[11px]">
-            Login Saat Ini: <strong>{currentUser.name}</strong> ({currentUser.role})
-          </span>
-        </div>
-
-        <p className="text-stone-500 text-[11px]">
-          SaaS PUSAKA mendukung pembagian peran kerja (Owner, Baker Dapur, Kasir Outlet, dan Kurir). Klik untuk beralih profil:
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {users.map((u) => {
-            const isCurrent = u.id === currentUser.id;
-
-            return (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => setCurrentUser(u)}
-                className={`p-3 rounded-lg border text-left transition flex items-center justify-between ${
-                  isCurrent
-                    ? 'bg-amber-500/10 border-amber-500 text-stone-950 ring-1 ring-amber-500'
-                    : 'bg-stone-50 border-stone-200 hover:bg-stone-100 text-stone-700'
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-xs">{u.name}</div>
-                  <div className="text-[11px] text-stone-500">{u.role}</div>
-                </div>
-                {isCurrent && (
-                  <span className="px-2 py-0.5 bg-amber-400 text-stone-950 rounded text-[10px] font-bold">
-                    Aktif
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Data Backup & Reset */}
       <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-3 text-xs">
         <h3 className="font-bold text-sm text-stone-900">Manajemen Data & Reset Demo</h3>
@@ -249,3 +201,4 @@ export const SettingsView: React.FC = () => {
     </div>
   );
 };
+
