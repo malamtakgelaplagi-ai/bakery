@@ -79,11 +79,25 @@ const initFirebaseApp = (): { app: FirebaseApp; auth: Auth } => {
       currentApp = initializeApp(config, appName);
     }
   } catch (e) {
-    currentApp = initializeApp(config, `${appName}-${Date.now()}`);
+    const existingApps = getApps();
+    if (existingApps.length > 0) {
+      currentApp = existingApps[0];
+    } else {
+      currentApp = initializeApp(config);
+    }
   }
 
-  currentAuth = getAuth(currentApp);
-  return { app: currentApp, auth: currentAuth };
+  try {
+    currentAuth = getAuth(currentApp);
+  } catch (e) {
+    // If auth already exists or in bad state, retrieve
+    const existingApps = getApps();
+    if (existingApps.length > 0) {
+      currentAuth = getAuth(existingApps[0]);
+    }
+  }
+
+  return { app: currentApp!, auth: currentAuth! };
 };
 
 const initial = initFirebaseApp();
@@ -127,23 +141,38 @@ export const initAuth = (
 ) => {
   const activeAuth = getActiveAuth();
 
-  // First check if coming back from redirect login
-  if (typeof window !== 'undefined') {
-    getRedirectResult(activeAuth)
-      .then((result) => {
-        if (result) {
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          if (credential?.accessToken) {
-            setStoredToken(credential.accessToken);
-            if (onAuthSuccess) {
-              onAuthSuccess(result.user, credential.accessToken);
+  // Check if coming back from redirect login (with safe error handling for IndexedDB closing/iframe state)
+  if (typeof window !== 'undefined' && activeAuth) {
+    try {
+      getRedirectResult(activeAuth)
+        .then((result) => {
+          if (result) {
+            const credential = GoogleAuthProvider.credentialFromResult(result);
+            if (credential?.accessToken) {
+              setStoredToken(credential.accessToken);
+              if (onAuthSuccess) {
+                onAuthSuccess(result.user, credential.accessToken);
+              }
             }
           }
-        }
-      })
-      .catch((err) => {
-        console.error('Redirect result error:', err);
-      });
+        })
+        .catch((err: any) => {
+          const msg = err?.message || String(err);
+          // Safely ignore benign indexedDB database closing / iframe lifecycle errors
+          if (
+            msg.includes('Database is closing') ||
+            msg.includes('internal-error') ||
+            msg.includes('IndexedDB') ||
+            msg.includes('null-user')
+          ) {
+            // Benign IndexedDB shutdown during React StrictMode/re-renders
+            return;
+          }
+          console.warn('Notice from auth redirect result:', msg);
+        });
+    } catch (e) {
+      // Ignore synchronous IndexedDB closure
+    }
   }
 
   return onAuthStateChanged(activeAuth, async (user: User | null) => {

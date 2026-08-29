@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import {
+  Order,
   OrderItem,
   PaymentMethod,
   PaymentStatus,
@@ -23,9 +24,10 @@ import {
 interface NewOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOrderCreated?: (order: Order) => void;
 }
 
-export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose }) => {
+export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onOrderCreated }) => {
   const { products, customers, createOrder, currentUser } = useBakery();
   const safeProducts = products || [];
   const safeCustomers = customers || [];
@@ -158,7 +160,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
     const calculatedTotal = Math.max(0, calculatedSubtotal - numDiscount + numShipping);
     const finalPaid = paymentStatus === 'LUNAS' ? calculatedTotal : (Number(paidAmount) || 0);
 
-    createOrder({
+    const newOrder = createOrder({
       customerId: selectedCustomerId && selectedCustomerId !== 'NEW' ? selectedCustomerId : undefined,
       customerName,
       customerPhone,
@@ -190,6 +192,9 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
     });
 
     onClose();
+    if (onOrderCreated && newOrder) {
+      onOrderCreated(newOrder);
+    }
   };
 
   return (

@@ -277,15 +277,15 @@ export const PosAndOrders: React.FC = () => {
                           <button
                             onClick={() => setSelectedOrderForInvoice(order)}
                             className="p-1.5 text-stone-600 hover:text-stone-950 hover:bg-stone-100 rounded-md transition"
-                            title="Lihat & Cetak Faktur"
+                            title="Lihat & Cetak Faktur Nota"
                           >
                             <Receipt className="w-4 h-4" />
                           </button>
 
                           <button
-                            onClick={() => handleQuickWhatsApp(order)}
-                            className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition"
-                            title="Kirim Nota via WhatsApp"
+                            onClick={() => setSelectedOrderForInvoice(order)}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition flex items-center gap-1"
+                            title="Kirim Gambar Nota ke WhatsApp"
                           >
                             <Send className="w-4 h-4" />
                           </button>
@@ -304,6 +304,7 @@ export const PosAndOrders: React.FC = () => {
       <NewOrderModal
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
+        onOrderCreated={(createdOrder) => setSelectedOrderForInvoice(createdOrder)}
       />
 
       <InvoiceModal
