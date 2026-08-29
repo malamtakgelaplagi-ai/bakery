@@ -39,6 +39,7 @@ import {
   syncAllDataToGoogleSheets,
   loadAllDataFromGoogleSheets,
   appendOrderRow,
+  updateOrderStatusInGoogleSheets,
   appendProductionRow,
   appendIngredientRow,
   appendWasteRow,
@@ -51,6 +52,7 @@ import {
   fetchAllFromAppsScript,
   testAppsScriptConnection,
   appendOrderToAppsScript,
+  updateOrderStatusToAppsScript,
   APPS_SCRIPT_TEMPLATE_CODE,
 } from '../services/appsScriptService';
 
@@ -2000,10 +2002,26 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const rand = Math.floor(100 + Math.random() * 900);
     const invoiceNumber = `${businessProfile.invoicePrefix}-${dateCode}-${rand}`;
 
+    const discountAmount = Number(orderData.discountAmount) || 0;
+    const shippingFee = Number(orderData.shippingFee) || 0;
+    const subtotal = Number(orderData.subtotal) || (orderData.items || []).reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0);
+    const totalAmount = Number(orderData.totalAmount) || Math.max(0, subtotal - discountAmount + shippingFee);
+    const paidAmount = Number(orderData.paidAmount) || (orderData.paymentStatus === 'LUNAS' ? totalAmount : 0);
+    const orderStatus = (orderData.orderStatus as OrderStatus) || 'PENDING';
+    const fulfillmentStatus = (orderData.fulfillmentStatus as FulfillmentStatus) || (orderStatus === 'PROCESSED' ? 'DIPROSES' : orderStatus === 'SHIPPED' ? 'DIKIRIM' : orderStatus === 'COMPLETED' ? 'SELESAI' : 'MENUNGGU');
+
     const newOrder: Order = {
       ...orderData,
       id: `ord-${Date.now()}`,
       invoiceNumber,
+      date: orderData.date || new Date().toISOString().split('T')[0],
+      discountAmount,
+      shippingFee,
+      subtotal,
+      totalAmount,
+      paidAmount,
+      orderStatus,
+      fulfillmentStatus,
       createdAt: new Date().toISOString(),
     };
 
@@ -2027,7 +2045,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         prev.map(c => {
           if (c.id === orderData.customerId) {
             const totalOrders = c.totalOrders + 1;
-            const totalSpend = c.totalSpend + orderData.totalAmount;
+            const totalSpend = c.totalSpend + totalAmount;
             let tier = c.tier;
             if (totalOrders >= 4 || totalSpend >= 500000) tier = 'LOYAL';
             else if (totalOrders >= 2) tier = 'AKTIF';
@@ -2036,7 +2054,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               totalOrders,
               totalSpend,
               tier,
-              lastOrderDate: orderData.date,
+              lastOrderDate: newOrder.date,
             };
           }
           return c;
@@ -2048,7 +2066,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     logAction(
       'PESANAN',
       'BUAT TRANSAKSI PESANAN',
-      `Pesanan ${invoiceNumber} untuk ${orderData.customerName} senilai Rp ${orderData.totalAmount.toLocaleString('id-ID')}`
+      `Pesanan ${invoiceNumber} untuk ${orderData.customerName} senilai Rp ${totalAmount.toLocaleString('id-ID')} (Diskon: Rp ${discountAmount.toLocaleString('id-ID')}, Ongkir: Rp ${shippingFee.toLocaleString('id-ID')})`
     );
 
     // Auto-sync new order to Google Sheets if connected and enabled
@@ -2077,17 +2095,49 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     else if (status === 'COMPLETED' || status === 'SELESAI') fulfillmentStatus = 'SELESAI';
     else if (status === 'CANCELLED' || status === 'BATAL') fulfillmentStatus = 'BATAL';
 
+    let targetOrder: Order | undefined;
+
     setOrders(prev =>
       prev.map(o => {
         if (o.id !== orderId) return o;
-        return {
+        targetOrder = {
           ...o,
           orderStatus: status as OrderStatus,
           fulfillmentStatus,
         };
+        return targetOrder;
       })
     );
-    logAction('PESANAN', 'UPDATE STATUS PESANAN', `Pesanan ID ${orderId} diubah status menjadi ${status}`);
+
+    const invoice = targetOrder?.invoiceNumber || orderId;
+    logAction('PESANAN', 'UPDATE STATUS PESANAN', `Pesanan ${invoice} diubah status menjadi ${status} (${fulfillmentStatus})`);
+
+    // Auto-sync to Google Sheets REST API
+    if (googleSheetsConfig.spreadsheetId && googleSheetsConfig.autoSyncOrders && googleAccessToken && targetOrder) {
+      updateOrderStatusInGoogleSheets(
+        googleSheetsConfig.spreadsheetId,
+        orderId,
+        targetOrder.invoiceNumber,
+        status,
+        targetOrder.paymentStatus
+      ).catch(err => {
+        console.warn('Google Sheets updateOrderStatus notice:', err);
+      });
+    }
+
+    // Auto-sync to Google Apps Script Web App
+    if (appsScriptConfig.webAppUrl && appsScriptConfig.autoSyncOrders && targetOrder) {
+      updateOrderStatusToAppsScript(
+        appsScriptConfig.webAppUrl,
+        orderId,
+        targetOrder.invoiceNumber,
+        status,
+        targetOrder.paymentStatus,
+        targetOrder.paidAmount
+      ).catch(err => {
+        console.warn('Apps Script updateOrderStatus notice:', err);
+      });
+    }
   };
 
   const updatePaymentStatus = (
@@ -2096,6 +2146,8 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     paidAmount?: number,
     method?: Order['paymentMethod']
   ) => {
+    let finalOrder: Order | undefined;
+
     setOrders(prev =>
       prev.map(o => {
         if (o.id !== orderId) return o;
@@ -2105,32 +2157,106 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             : paymentStatus === 'LUNAS'
             ? o.totalAmount
             : o.paidAmount;
-        return {
+        finalOrder = {
           ...o,
           paymentStatus,
           paidAmount: finalPaid,
           paymentMethod: method || o.paymentMethod,
         };
+        return finalOrder;
       })
     );
     logAction('PESANAN', 'UPDATE STATUS PEMBAYARAN', `Pesanan ID ${orderId} update status bayar ${paymentStatus}`);
+
+    if (finalOrder) {
+      const fo: Order = finalOrder;
+      if (googleSheetsConfig.spreadsheetId && googleSheetsConfig.autoSyncOrders && googleAccessToken) {
+        updateOrderStatusInGoogleSheets(
+          googleSheetsConfig.spreadsheetId,
+          orderId,
+          fo.invoiceNumber,
+          fo.orderStatus || fo.fulfillmentStatus || 'PENDING',
+          paymentStatus
+        ).catch(err => {
+          console.warn('Google Sheets update payment notice:', err);
+        });
+      }
+      if (appsScriptConfig.webAppUrl && appsScriptConfig.autoSyncOrders) {
+        updateOrderStatusToAppsScript(
+          appsScriptConfig.webAppUrl,
+          orderId,
+          fo.invoiceNumber,
+          fo.orderStatus || fo.fulfillmentStatus || 'PENDING',
+          paymentStatus,
+          fo.paidAmount
+        ).catch(err => {
+          console.warn('Apps Script update payment notice:', err);
+        });
+      }
+    }
   };
 
   const updateOrderPayment = (orderId: string, paymentStatus: Order['paymentStatus'], paidAmount: number, method: Order['paymentMethod']) => {
-    setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, paymentStatus, paidAmount, paymentMethod: method } : o))
-    );
-    logAction('PESANAN', 'UPDATE PEMBAYARAN', `Pesanan ID ${orderId} update status bayar ${paymentStatus}`);
+    updatePaymentStatus(orderId, paymentStatus, paidAmount, method);
   };
 
   const updateOrderFulfillment = (orderId: string, fulfillmentStatus: Order['fulfillmentStatus'], courierInfo?: { name?: string; tracking?: string }) => {
+    let status: OrderStatus = 'PENDING';
+    if (fulfillmentStatus === 'MENUNGGU') status = 'PENDING';
+    else if (fulfillmentStatus === 'DIPROSES') status = 'PROCESSED';
+    else if (fulfillmentStatus === 'DIKIRIM') status = 'SHIPPED';
+    else if (fulfillmentStatus === 'SIAP_DIAMBIL') status = 'DELIVERED';
+    else if (fulfillmentStatus === 'SELESAI') status = 'COMPLETED';
+    else if (fulfillmentStatus === 'BATAL') status = 'CANCELLED';
+
+    let updatedOrder: Order | undefined;
+
     setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, fulfillmentStatus, courierName: courierInfo?.name || o.courierName, trackingNumber: courierInfo?.tracking || o.trackingNumber } : o))
+      prev.map(o => {
+        if (o.id !== orderId) return o;
+        updatedOrder = {
+          ...o,
+          fulfillmentStatus,
+          orderStatus: status,
+          courierName: courierInfo?.name || o.courierName,
+          trackingNumber: courierInfo?.tracking || o.trackingNumber,
+        };
+        return updatedOrder;
+      })
     );
     logAction('PESANAN', 'UPDATE PENGIRIMAN', `Pesanan ID ${orderId} status pengiriman ${fulfillmentStatus}`);
+
+    if (updatedOrder) {
+      const uo: Order = updatedOrder;
+      if (googleSheetsConfig.spreadsheetId && googleSheetsConfig.autoSyncOrders && googleAccessToken) {
+        updateOrderStatusInGoogleSheets(
+          googleSheetsConfig.spreadsheetId,
+          orderId,
+          uo.invoiceNumber,
+          status,
+          uo.paymentStatus
+        ).catch(err => {
+          console.warn('Google Sheets update fulfillment notice:', err);
+        });
+      }
+      if (appsScriptConfig.webAppUrl && appsScriptConfig.autoSyncOrders) {
+        updateOrderStatusToAppsScript(
+          appsScriptConfig.webAppUrl,
+          orderId,
+          uo.invoiceNumber,
+          status,
+          uo.paymentStatus,
+          uo.paidAmount
+        ).catch(err => {
+          console.warn('Apps Script update fulfillment notice:', err);
+        });
+      }
+    }
   };
 
   const cancelOrder = (orderId: string, reason?: string) => {
+    let cancelledOrder: Order | undefined;
+
     setOrders(prev =>
       prev.map(o => {
         if (o.id !== orderId) return o;
@@ -2147,14 +2273,43 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return prod;
           })
         );
-        return {
+        cancelledOrder = {
           ...o,
           fulfillmentStatus: 'BATAL',
+          orderStatus: 'CANCELLED',
           notes: `${o.notes || ''} [BATAL: ${reason || 'Dibatalkan'}]`,
         };
+        return cancelledOrder;
       })
     );
     logAction('PESANAN', 'BATALKAN PESANAN', `Membatalkan order ID ${orderId} dan merestore stok produk`);
+
+    if (cancelledOrder) {
+      const co: Order = cancelledOrder;
+      if (googleSheetsConfig.spreadsheetId && googleSheetsConfig.autoSyncOrders && googleAccessToken) {
+        updateOrderStatusInGoogleSheets(
+          googleSheetsConfig.spreadsheetId,
+          orderId,
+          co.invoiceNumber,
+          'CANCELLED',
+          co.paymentStatus
+        ).catch(err => {
+          console.warn('Google Sheets cancel order notice:', err);
+        });
+      }
+      if (appsScriptConfig.webAppUrl && appsScriptConfig.autoSyncOrders) {
+        updateOrderStatusToAppsScript(
+          appsScriptConfig.webAppUrl,
+          orderId,
+          co.invoiceNumber,
+          'CANCELLED',
+          co.paymentStatus,
+          co.paidAmount
+        ).catch(err => {
+          console.warn('Apps Script cancel order notice:', err);
+        });
+      }
+    }
   };
 
   // Customers CRM CRUD

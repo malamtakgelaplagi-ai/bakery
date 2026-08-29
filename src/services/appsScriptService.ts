@@ -182,7 +182,16 @@ export async function appendOrderToAppsScript(
   try {
     const payload = {
       action: 'addOrder',
-      order,
+      order: {
+        ...order,
+        discountAmount: Number(order.discountAmount) || 0,
+        shippingFee: Number(order.shippingFee) || 0,
+        subtotal: Number(order.subtotal) || (order.items || []).reduce((acc, i) => acc + (i.subtotal || 0), 0),
+        totalAmount: Number(order.totalAmount) || 0,
+        paidAmount: Number(order.paidAmount) || 0,
+        fulfillmentStatus: order.fulfillmentStatus || order.orderStatus || 'MENUNGGU',
+        orderStatus: order.orderStatus || 'PENDING',
+      },
     };
 
     const response = await fetch(webAppUrl, {
@@ -200,6 +209,48 @@ export async function appendOrderToAppsScript(
     };
   } catch (error: any) {
     console.error('Failed to append order to Apps Script:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Update order status or payment status in Google Apps Script Web App
+ */
+export async function updateOrderStatusToAppsScript(
+  webAppUrl: string,
+  orderId: string,
+  invoiceNumber: string,
+  status: string,
+  paymentStatus?: string,
+  paidAmount?: number
+): Promise<{ success: boolean; message: string }> {
+  if (!webAppUrl) return { success: false, message: 'URL belum dikonfigurasi' };
+
+  try {
+    const payload = {
+      action: 'updateOrderStatus',
+      orderId,
+      invoiceNumber,
+      status,
+      paymentStatus,
+      paidAmount,
+    };
+
+    const response = await fetch(webAppUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    return {
+      success: result?.status === 'success',
+      message: result?.message || 'Status pesanan berhasil diperbarui di Google Sheets',
+    };
+  } catch (error: any) {
+    console.error('Failed to update order status in Apps Script:', error);
     return { success: false, message: error.message };
   }
 }
@@ -273,6 +324,14 @@ function doPost(e) {
       });
     }
 
+    if (action === 'updateOrderStatus') {
+      updateOrderInSheet(ss, payload.orderId, payload.invoiceNumber, payload.status, payload.paymentStatus, payload.paidAmount);
+      return createJsonResponse({
+        status: 'success',
+        message: 'Status pesanan berhasil diperbarui di Sheet Orders_Penjualan'
+      });
+    }
+
     return createJsonResponse({ status: 'error', message: 'Action doPost tidak dikenal' });
   } catch (err) {
     return createJsonResponse({
@@ -298,30 +357,38 @@ function syncAllDataToSheets(ss, data) {
     var sheet = getOrCreateSheet(ss, '🧾 Orders_Penjualan', [
       'Order ID', 'No Faktur', 'Tanggal Order', 'Nama Pelanggan', 'No HP/WA',
       'Tipe Layanan', 'Status Pembayaran', 'Metode Pembayaran', 'Status Pesanan',
-      'Total Item (Qty)', 'Subtotal (Rp)', 'Diskon (Rp)', 'Biaya Kirim (Rp)',
+      'Total Item (Qty)', 'Subtotal (Rp)', 'Diskon (Rp)', 'Ongkos Kirim (Rp)',
       'Total Akhir (Rp)', 'Jumlah Bayar (Rp)', 'Kembalian/Sisa (Rp)', 'Item Detail'
     ]);
     var rows = data.orders.map(function(o) {
       var itemSummary = (o.items || []).map(function(it) {
         return (it.productName || it.name || 'Item') + ' (x' + (it.quantity || it.qty || 1) + ')';
       }).join(', ');
+
+      var disc = (typeof o.discountAmount !== 'undefined') ? Number(o.discountAmount) : ((typeof o.discount !== 'undefined') ? Number(o.discount) : 0);
+      var ship = (typeof o.shippingFee !== 'undefined') ? Number(o.shippingFee) : ((typeof o.deliveryFee !== 'undefined') ? Number(o.deliveryFee) : 0);
+      var sub = (typeof o.subtotal !== 'undefined') ? Number(o.subtotal) : (Number(o.totalAmount) || 0);
+      var tot = (typeof o.totalAmount !== 'undefined') ? Number(o.totalAmount) : (sub - disc + ship);
+      var paid = (typeof o.paidAmount !== 'undefined') ? Number(o.paidAmount) : ((typeof o.amountPaid !== 'undefined') ? Number(o.amountPaid) : tot);
+      var statusPesanan = o.fulfillmentStatus || o.orderStatus || 'MENUNGGU';
+
       return [
         o.id || '',
-        o.orderNumber || o.invoiceNumber || '',
-        o.createdAt || o.orderDate || '',
+        o.invoiceNumber || o.orderNumber || '',
+        o.date || o.createdAt || '',
         o.customerName || (o.customer && o.customer.name) || 'Umum',
         o.customerPhone || (o.customer && o.customer.phone) || '',
         o.deliveryType || 'Dine-In / Toko',
         o.paymentStatus || 'LUNAS',
         o.paymentMethod || 'TUNAI',
-        o.fulfillmentStatus || o.status || 'SELESAI',
+        statusPesanan,
         (o.items || []).reduce(function(acc, i){ return acc + (i.quantity || i.qty || 0); }, 0),
-        o.subtotal || o.totalAmount || 0,
-        o.discount || 0,
-        o.deliveryFee || 0,
-        o.totalAmount || 0,
-        o.amountPaid || o.totalAmount || 0,
-        o.change || 0,
+        sub,
+        disc,
+        ship,
+        tot,
+        paid,
+        Math.max(0, paid - tot),
         itemSummary
       ];
     });
@@ -523,7 +590,7 @@ function appendSingleOrder(ss, order) {
   var sheet = getOrCreateSheet(ss, '🧾 Orders_Penjualan', [
     'Order ID', 'No Faktur', 'Tanggal Order', 'Nama Pelanggan', 'No HP/WA',
     'Tipe Layanan', 'Status Pembayaran', 'Metode Pembayaran', 'Status Pesanan',
-    'Total Item (Qty)', 'Subtotal (Rp)', 'Diskon (Rp)', 'Biaya Kirim (Rp)',
+    'Total Item (Qty)', 'Subtotal (Rp)', 'Diskon (Rp)', 'Ongkos Kirim (Rp)',
     'Total Akhir (Rp)', 'Jumlah Bayar (Rp)', 'Kembalian/Sisa (Rp)', 'Item Detail'
   ]);
 
@@ -531,27 +598,65 @@ function appendSingleOrder(ss, order) {
     return (it.productName || it.name || 'Item') + ' (x' + (it.quantity || it.qty || 1) + ')';
   }).join(', ');
 
+  var disc = (typeof order.discountAmount !== 'undefined') ? Number(order.discountAmount) : ((typeof order.discount !== 'undefined') ? Number(order.discount) : 0);
+  var ship = (typeof order.shippingFee !== 'undefined') ? Number(order.shippingFee) : ((typeof order.deliveryFee !== 'undefined') ? Number(order.deliveryFee) : 0);
+  var sub = (typeof order.subtotal !== 'undefined') ? Number(order.subtotal) : (Number(order.totalAmount) || 0);
+  var tot = (typeof order.totalAmount !== 'undefined') ? Number(order.totalAmount) : (sub - disc + ship);
+  var paid = (typeof order.paidAmount !== 'undefined') ? Number(order.paidAmount) : ((typeof order.amountPaid !== 'undefined') ? Number(order.amountPaid) : tot);
+  var statusPesanan = order.fulfillmentStatus || order.orderStatus || 'MENUNGGU';
+
   var row = [
     order.id || '',
-    order.orderNumber || order.invoiceNumber || '',
-    order.createdAt || new Date().toISOString(),
+    order.invoiceNumber || order.orderNumber || '',
+    order.date || order.createdAt || new Date().toISOString(),
     order.customerName || (order.customer && order.customer.name) || 'Umum',
     order.customerPhone || (order.customer && order.customer.phone) || '',
     order.deliveryType || 'Dine-In / Toko',
     order.paymentStatus || 'LUNAS',
     order.paymentMethod || 'TUNAI',
-    order.fulfillmentStatus || 'SELESAI',
+    statusPesanan,
     (order.items || []).reduce(function(acc, i){ return acc + (i.quantity || i.qty || 0); }, 0),
-    order.subtotal || order.totalAmount || 0,
-    order.discount || 0,
-    order.deliveryFee || 0,
-    order.totalAmount || 0,
-    order.amountPaid || order.totalAmount || 0,
-    order.change || 0,
+    sub,
+    disc,
+    ship,
+    tot,
+    paid,
+    Math.max(0, paid - tot),
     itemSummary
   ];
 
   sheet.appendRow(row);
+}
+
+// Update existing order status in Sheet Orders_Penjualan
+function updateOrderInSheet(ss, orderId, invoiceNumber, status, paymentStatus, paidAmount) {
+  var sheet = ss.getSheetByName('🧾 Orders_Penjualan');
+  if (!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return;
+
+  for (var i = 1; i < data.length; i++) {
+    var rowOrderId = String(data[i][0] || '').trim();
+    var rowInvoice = String(data[i][1] || '').trim();
+
+    if ((orderId && rowOrderId === String(orderId).trim()) || (invoiceNumber && rowInvoice === String(invoiceNumber).trim())) {
+      // Column 9 (index 8, 1-based index 9) is Status Pesanan
+      if (status) {
+        sheet.getRange(i + 1, 9).setValue(status);
+      }
+      // Column 7 (index 6, 1-based index 7) is Status Pembayaran
+      if (paymentStatus) {
+        sheet.getRange(i + 1, 7).setValue(paymentStatus);
+      }
+      // Column 15 (index 14, 1-based index 15) is Jumlah Bayar
+      if (typeof paidAmount !== 'undefined' && paidAmount !== null && !isNaN(paidAmount)) {
+        sheet.getRange(i + 1, 15).setValue(Number(paidAmount));
+        var totalAkhir = Number(data[i][13]) || 0;
+        sheet.getRange(i + 1, 16).setValue(Math.max(0, Number(paidAmount) - totalAkhir));
+      }
+      break;
+    }
+  }
 }
 
 // Helper: Get or Create Sheet with Header Styling

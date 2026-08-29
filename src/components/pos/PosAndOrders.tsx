@@ -227,20 +227,49 @@ export const PosAndOrders: React.FC = () => {
                       </td>
 
                       <td className="p-3.5">
-                        <select
-                          value={order.orderStatus}
-                          onChange={(e) =>
-                            updateOrderStatus(order.id, e.target.value as OrderStatus)
-                          }
-                          className="px-2 py-1 rounded text-[10px] font-semibold border border-stone-300 bg-white text-stone-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="PENDING">Menunggu</option>
-                          <option value="PROCESSED">Sedang Dikemas</option>
-                          <option value="SHIPPED">Dalam Pengiriman</option>
-                          <option value="DELIVERED">Terkirim</option>
-                          <option value="COMPLETED">Selesai</option>
-                          <option value="CANCELLED">Batal</option>
-                        </select>
+                        {(() => {
+                          const currentStatus =
+                            order.orderStatus ||
+                            (order.fulfillmentStatus === 'SELESAI'
+                              ? 'COMPLETED'
+                              : order.fulfillmentStatus === 'DIKIRIM'
+                              ? 'SHIPPED'
+                              : order.fulfillmentStatus === 'DIPROSES'
+                              ? 'PROCESSED'
+                              : order.fulfillmentStatus === 'SIAP_DIAMBIL'
+                              ? 'DELIVERED'
+                              : order.fulfillmentStatus === 'BATAL'
+                              ? 'CANCELLED'
+                              : 'PENDING');
+                          return (
+                            <select
+                              value={currentStatus}
+                              onChange={(e) =>
+                                updateOrderStatus(order.id, e.target.value as OrderStatus)
+                              }
+                              className={`px-2 py-1 rounded text-[10px] font-bold border focus:outline-none cursor-pointer transition ${
+                                currentStatus === 'PENDING'
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : currentStatus === 'PROCESSED'
+                                  ? 'bg-blue-50 text-blue-900 border-blue-300'
+                                  : currentStatus === 'SHIPPED'
+                                  ? 'bg-indigo-50 text-indigo-900 border-indigo-300'
+                                  : currentStatus === 'DELIVERED'
+                                  ? 'bg-teal-50 text-teal-900 border-teal-300'
+                                  : currentStatus === 'COMPLETED'
+                                  ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                  : 'bg-rose-50 text-rose-900 border-rose-300'
+                              }`}
+                            >
+                              <option value="PENDING">Menunggu (Baru)</option>
+                              <option value="PROCESSED">Sedang Dikemas</option>
+                              <option value="SHIPPED">Dalam Pengiriman</option>
+                              <option value="DELIVERED">Siap Diambil / Terkirim</option>
+                              <option value="COMPLETED">Selesai</option>
+                              <option value="CANCELLED">Batal</option>
+                            </select>
+                          );
+                        })()}
                       </td>
 
                       <td className="p-3.5 text-center">

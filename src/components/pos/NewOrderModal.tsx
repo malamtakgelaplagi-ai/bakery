@@ -58,8 +58,9 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('TRANSFER_BCA');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('LUNAS');
   const [paidAmount, setPaidAmount] = useState<number>(55000);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>('PENDING');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('DELIVERY');
-  const [deliveryDate, setDeliveryDate] = useState('2026-08-23');
+  const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [deliveryTime, setDeliveryTime] = useState('11:00');
   const [notes, setNotes] = useState('');
 
@@ -151,6 +152,12 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
     e.preventDefault();
     if (items.length === 0 || !customerName.trim()) return;
 
+    const calculatedSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const numDiscount = Number(discountAmount) || 0;
+    const numShipping = Number(shippingFee) || 0;
+    const calculatedTotal = Math.max(0, calculatedSubtotal - numDiscount + numShipping);
+    const finalPaid = paymentStatus === 'LUNAS' ? calculatedTotal : (Number(paidAmount) || 0);
+
     createOrder({
       customerId: selectedCustomerId && selectedCustomerId !== 'NEW' ? selectedCustomerId : undefined,
       customerName,
@@ -165,14 +172,16 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
         subtotal: it.subtotal,
         hppSnapshot: it.hppSnapshot,
       })),
-      subtotal,
-      discountAmount,
-      shippingFee,
-      totalAmount,
-      paidAmount: paymentStatus === 'LUNAS' ? totalAmount : paidAmount,
+      date: deliveryDate || new Date().toISOString().split('T')[0],
+      subtotal: calculatedSubtotal,
+      discountAmount: numDiscount,
+      shippingFee: numShipping,
+      totalAmount: calculatedTotal,
+      paidAmount: finalPaid,
       paymentMethod,
       paymentStatus,
-      orderStatus: paymentStatus === 'LUNAS' ? 'PROCESSED' : 'PENDING',
+      orderStatus: orderStatus || 'PENDING',
+      fulfillmentStatus: orderStatus === 'PROCESSED' ? 'DIPROSES' : orderStatus === 'SHIPPED' ? 'DIKIRIM' : orderStatus === 'DELIVERED' ? 'SIAP_DIAMBIL' : orderStatus === 'COMPLETED' ? 'SELESAI' : 'MENUNGGU',
       deliveryType,
       deliveryDate,
       deliveryTime,
@@ -361,7 +370,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
 
           {/* Payment & Delivery Options */}
           <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="block font-semibold text-stone-700 mb-1">Metode Bayar</label>
                 <select
@@ -397,6 +406,21 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
               </div>
 
               <div>
+                <label className="block font-semibold text-stone-700 mb-1">Status Pesanan Awal</label>
+                <select
+                  value={orderStatus}
+                  onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}
+                  className="w-full px-2.5 py-1.5 border border-amber-300 rounded-lg bg-amber-50/60 focus:outline-none font-bold text-amber-900"
+                >
+                  <option value="PENDING">Menunggu (Baru Masuk)</option>
+                  <option value="PROCESSED">Sedang Dikemas / Diproses</option>
+                  <option value="SHIPPED">Dalam Pengiriman Kurir</option>
+                  <option value="DELIVERED">Siap Diambil / Terkirim</option>
+                  <option value="COMPLETED">Selesai</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block font-semibold text-stone-700 mb-1">Metode Ambil</label>
                 <select
                   value={deliveryType}
@@ -406,6 +430,28 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose })
                   <option value="DELIVERY">Delivery Kurir</option>
                   <option value="PICKUP">Pickup (Ambil Sendiri)</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Tanggal Pesanan / Pengiriman</label>
+                <input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Jam Ambil / Estimasi</label>
+                <input
+                  type="time"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white focus:outline-none"
+                />
               </div>
             </div>
 

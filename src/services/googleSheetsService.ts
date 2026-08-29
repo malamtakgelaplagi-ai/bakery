@@ -516,23 +516,31 @@ export async function syncAllDataToGoogleSheets(
     'Kasir',
     'Catatan',
   ];
-  const orderRows = (data.orders || []).map((o) => [
-    o.invoiceNumber,
-    o.date,
-    o.customerName,
-    o.customerPhone,
-    o.customerAddress || '-',
-    (o.items || []).map((it) => `${it.productName} (${it.qty}x)`).join(', '),
-    o.subtotal,
-    o.discountAmount,
-    o.shippingFee,
-    o.totalAmount,
-    o.paymentStatus,
-    o.paymentMethod,
-    o.orderStatus || o.fulfillmentStatus || 'PENDING',
-    o.cashierName || o.createdBy || 'Kasir',
-    o.notes || '-',
-  ]);
+  const orderRows = (data.orders || []).map((o) => {
+    const sub = Number(o.subtotal) || (o.items || []).reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
+    const disc = typeof o.discountAmount === 'number' ? o.discountAmount : 0;
+    const ship = typeof o.shippingFee === 'number' ? o.shippingFee : 0;
+    const tot = typeof o.totalAmount === 'number' ? o.totalAmount : (sub - disc + ship);
+    const status = o.orderStatus || (o.fulfillmentStatus === 'MENUNGGU' ? 'PENDING' : o.fulfillmentStatus || 'PENDING');
+
+    return [
+      o.invoiceNumber || o.id,
+      o.date || o.createdAt || '',
+      o.customerName || 'Umum',
+      o.customerPhone || '',
+      o.customerAddress || '-',
+      (o.items || []).map((it) => `${it.productName} (${it.qty}x)`).join(', '),
+      sub,
+      disc,
+      ship,
+      tot,
+      o.paymentStatus || 'LUNAS',
+      o.paymentMethod || 'CASH',
+      status,
+      o.cashierName || 'Kasir',
+      o.notes || '-',
+    ];
+  });
 
   // 2. Ingredients Sheet
   const ingredientHeaders = [
@@ -770,20 +778,26 @@ export async function syncAllDataToGoogleSheets(
  */
 export async function appendOrderRow(spreadsheetId: string, order: Order): Promise<void> {
   const headers = await getAuthHeader();
+  const sub = Number(order.subtotal) || (order.items || []).reduce((acc, i) => acc + (i.subtotal || 0), 0);
+  const disc = Number(order.discountAmount) || 0;
+  const ship = Number(order.shippingFee) || 0;
+  const tot = Number(order.totalAmount) || (sub - disc + ship);
+  const statusPesanan = order.orderStatus || (order.fulfillmentStatus === 'MENUNGGU' ? 'PENDING' : order.fulfillmentStatus || 'PENDING');
+
   const row = [
     order.invoiceNumber,
-    order.date,
+    order.date || new Date().toISOString().split('T')[0],
     order.customerName,
     order.customerPhone,
     order.customerAddress || '-',
     (order.items || []).map((it) => `${it.productName} (${it.qty}x)`).join(', '),
-    order.subtotal,
-    order.discountAmount,
-    order.shippingFee,
-    order.totalAmount,
+    sub,
+    disc,
+    ship,
+    tot,
     order.paymentStatus,
     order.paymentMethod,
-    order.orderStatus || order.fulfillmentStatus || 'PROCESSED',
+    statusPesanan,
     order.cashierName || 'Kasir',
     order.notes || '-',
   ];
@@ -796,6 +810,70 @@ export async function appendOrderRow(spreadsheetId: string, order: Order): Promi
       body: JSON.stringify({ values: [row] }),
     }
   );
+}
+
+/**
+ * Updates an existing Order's status or payment status directly in the Google Sheet Orders tab
+ */
+export async function updateOrderStatusInGoogleSheets(
+  spreadsheetId: string,
+  orderId: string,
+  invoiceNumber: string,
+  newStatus: string,
+  paymentStatus?: string
+): Promise<void> {
+  try {
+    const headers = await getAuthHeader();
+    const res = await fetch(
+      `${SHEETS_API_BASE}/${spreadsheetId}/values/'${SHEET_NAMES.ORDERS}'!A1:O500`,
+      { headers }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows: any[][] = data.values || [];
+    if (rows.length <= 1) return;
+
+    let targetRowIndex = -1;
+    for (let i = 1; i < rows.length; i++) {
+      const inv = String(rows[i][0] || '').trim();
+      if (inv && inv === String(invoiceNumber).trim()) {
+        targetRowIndex = i + 1; // 1-based index in sheets
+        break;
+      }
+    }
+
+    if (targetRowIndex > 0) {
+      // Column M (13th column) is Status Pengiriman
+      const updates: { range: string; values: any[][] }[] = [
+        {
+          range: `'${SHEET_NAMES.ORDERS}'!M${targetRowIndex}`,
+          values: [[newStatus]],
+        },
+      ];
+
+      // Column K (11th column) is Status Bayar
+      if (paymentStatus) {
+        updates.push({
+          range: `'${SHEET_NAMES.ORDERS}'!K${targetRowIndex}`,
+          values: [[paymentStatus]],
+        });
+      }
+
+      await fetch(
+        `${SHEETS_API_BASE}/${spreadsheetId}/values:batchUpdate`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            valueInputOption: 'USER_ENTERED',
+            data: updates,
+          }),
+        }
+      );
+    }
+  } catch (err) {
+    console.warn('Failed to update order status in Google Sheets:', err);
+  }
 }
 
 /**
