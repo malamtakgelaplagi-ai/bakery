@@ -24,8 +24,12 @@ import {
   StockMovement,
   Unit,
   Outlet,
-  GoogleSheetsConfig
+  GoogleSheetsConfig,
+  WhatsAppSession,
+  WhatsAppMessageItem,
+  WhatsAppBotStep
 } from '../types';
+import { WhatsAppBotService } from '../services/whatsappBotService';
 import {
   initAuth,
   googleSignIn,
@@ -79,13 +83,19 @@ const INITIAL_PROFILE: BusinessProfile = {
   address: 'Jl. R.E. Martadinata No. 88, Citarum',
   city: 'Bandung, Jawa Barat',
   operatingHours: '07.00 - 20.00 WIB',
+  googleMapsUrl: 'https://maps.google.com/?q=Jl.+R.E.+Martadinata+No.+88+Bandung',
   currency: 'IDR',
   invoicePrefix: 'INV-PSK',
   productionBatchPrefix: 'BATCH-PSK',
   purchasePrefix: 'PO-PSK',
+  bankAccountInfo: 'BCA: 1234567890 a.n PUSAKA BOLU\nMandiri: 9876543210 a.n PUSAKA BOLU',
+  invoiceFooterNotes: 'Terima kasih atas pesanan Anda! Simpan di suhu ruang, habiskan dalam 4 hari.',
   whatsappGreetingTemplate: 'Halo Kak! Selamat datang di PUSAKA Bakery.',
   whatsappInvoiceTemplate: '',
   whatsappFollowUpTemplate: '',
+  whatsappBotEnabled: true,
+  adminWhatsAppPhone: '081234567890',
+  whatsappGatewayProvider: 'FONNTE',
 };
 
 const INITIAL_SUPPLIERS: Supplier[] = [
@@ -1244,6 +1254,18 @@ interface BakeryContextType {
   syncNowToAppsScript: () => Promise<{ success: boolean; message: string }>;
   loadDataFromAppsScript: () => Promise<{ success: boolean; message: string; count?: { ingredients: number; products: number } }>;
   appsScriptTemplateCode: string;
+
+  // WhatsApp Automation Bot (Zero AI / 100% Menu & SaaS Data Driven)
+  whatsappSessions: WhatsAppSession[];
+  activeWhatsAppPhone: string;
+  setActiveWhatsAppPhone: (phone: string) => void;
+  sendWhatsAppSimulatorMessage: (
+    phone: string,
+    text: string,
+    payload?: string | null
+  ) => Promise<{ reply: WhatsAppMessageItem; orderCreated?: Order }>;
+  resetWhatsAppSession: (phone: string) => void;
+  toggleWhatsAppAdminHandoff: (phone: string, isHandled: boolean) => void;
 }
 
 const BakeryContext = createContext<BakeryContextType | null>(null);
@@ -1394,6 +1416,35 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [appsScriptConfig, setAppsScriptConfig] = useState<AppsScriptConfig>(() => getAppsScriptConfig());
   const [isAppsScriptSyncing, setIsAppsScriptSyncing] = useState<boolean>(false);
 
+  // WhatsApp Automation Sessions State (100% Menu & SaaS Data Driven)
+  const INITIAL_WA_SESSIONS: WhatsAppSession[] = [
+    {
+      id: 'sess-demo-sarah',
+      customerPhone: '081298765432',
+      customerName: 'Bunda Sarah (Demo Konsumen)',
+      currentStep: 'MAIN_MENU',
+      isHumanHandled: false,
+      lastMessageTime: '10:05',
+      messages: [
+        {
+          id: 'msg-user-init',
+          sender: 'user',
+          text: 'Halo PUSAKA Bakery...',
+          timestamp: '10:04',
+        },
+        WhatsAppBotService.buildMainMenuMessage(businessProfile),
+      ],
+    },
+  ];
+
+  const [whatsappSessions, setWhatsappSessions] = useState<WhatsAppSession[]>(() => {
+    const list = safeParseJson<WhatsAppSession[]>(`${STORAGE_KEY}_WA_SESSIONS`, INITIAL_WA_SESSIONS);
+    if (!Array.isArray(list) || list.length === 0) return INITIAL_WA_SESSIONS;
+    return list;
+  });
+
+  const [activeWhatsAppPhone, setActiveWhatsAppPhone] = useState<string>('081298765432');
+
   // Listen to Google Auth State on Mount
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -1434,7 +1485,8 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem(`${STORAGE_KEY}_EXPENSES`, JSON.stringify(expenses));
     localStorage.setItem(`${STORAGE_KEY}_WASTES`, JSON.stringify(wastes));
     localStorage.setItem(`${STORAGE_KEY}_LOGS`, JSON.stringify(auditLogs));
-  }, [businessProfile, users, currentUserId, ingredients, suppliers, purchases, recipes, products, productions, customers, orders, expenses, wastes, auditLogs]);
+    localStorage.setItem(`${STORAGE_KEY}_WA_SESSIONS`, JSON.stringify(whatsappSessions));
+  }, [businessProfile, users, currentUserId, ingredients, suppliers, purchases, recipes, products, productions, customers, orders, expenses, wastes, auditLogs, whatsappSessions]);
 
   // Switch Active User / Role Handlers
   const setCurrentUser = (user: UserAccount) => {
@@ -2800,6 +2852,109 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const sendWhatsAppSimulatorMessage = async (
+    phone: string,
+    text: string,
+    payload?: string | null
+  ): Promise<{ reply: WhatsAppMessageItem; orderCreated?: Order }> => {
+    const cleanPhone = phone.trim() || '081298765432';
+    let currentSession = whatsappSessions.find(s => s.customerPhone === cleanPhone);
+
+    if (!currentSession) {
+      currentSession = {
+        id: `sess-${Date.now()}`,
+        customerPhone: cleanPhone,
+        customerName: 'Pelanggan WhatsApp',
+        currentStep: 'MAIN_MENU',
+        isHumanHandled: false,
+        lastMessageTime: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        messages: [WhatsAppBotService.buildMainMenuMessage(businessProfile)],
+      };
+    }
+
+    const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    // Append user message
+    const userMsg: WhatsAppMessageItem = {
+      id: `msg-user-${Date.now()}`,
+      sender: 'user',
+      text: text || (payload ? `[Pilih: ${payload}]` : ''),
+      timestamp: timeNow,
+    };
+
+    // Deep copy session for state machine
+    const sessionCopy: WhatsAppSession = JSON.parse(JSON.stringify(currentSession));
+    sessionCopy.messages.push(userMsg);
+    sessionCopy.lastMessageTime = timeNow;
+
+    const result = WhatsAppBotService.processIncomingMessage(
+      sessionCopy,
+      text,
+      payload || null,
+      products,
+      businessProfile
+    );
+
+    let createdOrder: Order | undefined;
+    if (result.orderToCreate) {
+      createdOrder = createOrder(result.orderToCreate);
+      logAction(
+        'PESANAN',
+        'ORDER WHATSAPP OTOMATIS',
+        `Pesanan otomatis masuk via bot WhatsApp untuk ${result.orderToCreate.customerName} (${result.orderToCreate.customerPhone})`
+      );
+    }
+
+    result.session.messages.push(result.replyMessage);
+    result.session.lastMessageTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    setWhatsappSessions(prev => {
+      const idx = prev.findIndex(s => s.customerPhone === cleanPhone);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.session;
+        return next;
+      }
+      return [result.session, ...prev];
+    });
+
+    return { reply: result.replyMessage, orderCreated: createdOrder };
+  };
+
+  const resetWhatsAppSession = (phone: string) => {
+    const cleanPhone = phone.trim() || '081298765432';
+    const freshSession: WhatsAppSession = {
+      id: `sess-${Date.now()}`,
+      customerPhone: cleanPhone,
+      customerName: 'Pelanggan WhatsApp',
+      currentStep: 'MAIN_MENU',
+      isHumanHandled: false,
+      lastMessageTime: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      messages: [WhatsAppBotService.buildMainMenuMessage(businessProfile)],
+    };
+
+    setWhatsappSessions(prev => {
+      const filtered = prev.filter(s => s.customerPhone !== cleanPhone);
+      return [freshSession, ...filtered];
+    });
+  };
+
+  const toggleWhatsAppAdminHandoff = (phone: string, isHandled: boolean) => {
+    const cleanPhone = phone.trim() || '081298765432';
+    setWhatsappSessions(prev =>
+      prev.map(s => {
+        if (s.customerPhone === cleanPhone) {
+          return {
+            ...s,
+            isHumanHandled: isHandled,
+            currentStep: isHandled ? 'ADMIN_HANDOFF' : 'MAIN_MENU',
+          };
+        }
+        return s;
+      })
+    );
+  };
+
   return (
     <BakeryContext.Provider
       value={{
@@ -2888,6 +3043,12 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         syncNowToAppsScript,
         loadDataFromAppsScript,
         appsScriptTemplateCode: APPS_SCRIPT_TEMPLATE_CODE,
+        whatsappSessions,
+        activeWhatsAppPhone,
+        setActiveWhatsAppPhone,
+        sendWhatsAppSimulatorMessage,
+        resetWhatsAppSession,
+        toggleWhatsAppAdminHandoff,
       }}
     >
       {children}

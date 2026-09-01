@@ -9,6 +9,9 @@ import {
   Users,
   RefreshCw,
   CheckCircle2,
+  MessageSquare,
+  MapPin,
+  Code2,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -139,6 +142,100 @@ export const SettingsView: React.FC = () => {
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none"
           />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-1">
+            <label className="block font-bold text-stone-700 mb-1">Jam Operasional Toko</label>
+            <input
+              type="text"
+              value={form.operatingHours || '07.00 - 20.00 WIB'}
+              onChange={(e) => setForm({ ...form, operatingHours: e.target.value })}
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none text-xs"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block font-bold text-stone-700 mb-1">
+              Link Lokasi Google Maps (Dikirim via WhatsApp Menu 2)
+            </label>
+            <input
+              type="text"
+              value={form.googleMapsUrl || ''}
+              onChange={(e) => setForm({ ...form, googleMapsUrl: e.target.value })}
+              placeholder="https://maps.google.com/?q=..."
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono text-[11px]"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block font-bold text-stone-700 mb-1">Latitude (Koordinat GPS Toko)</label>
+            <input
+              type="number"
+              step="0.000001"
+              value={form.latitude !== undefined ? form.latitude : -6.90835}
+              onChange={(e) => setForm({ ...form, latitude: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono text-xs"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-stone-700 mb-1">Longitude (Koordinat GPS Toko)</label>
+            <input
+              type="number"
+              step="0.000001"
+              value={form.longitude !== undefined ? form.longitude : 107.61895}
+              onChange={(e) => setForm({ ...form, longitude: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono text-xs"
+            />
+          </div>
+        </div>
+
+        {/* WhatsApp Bot Configuration Section */}
+        <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-emerald-700" />
+              <span>WhatsApp Automation Bot (4 Menu & Data SaaS)</span>
+            </span>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.whatsappBotEnabled !== false}
+                onChange={(e) => setForm({ ...form, whatsappBotEnabled: e.target.checked })}
+                className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+              />
+              <span className="text-[11px] font-bold text-stone-800">Aktifkan Respon Bot</span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-stone-700 mb-1">
+                Nomor WhatsApp Admin / CS (Untuk Menu 4: Chat Admin)
+              </label>
+              <input
+                type="text"
+                value={form.adminWhatsAppPhone || form.phone}
+                onChange={(e) => setForm({ ...form, adminWhatsAppPhone: e.target.value })}
+                placeholder="081234567890"
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none font-mono text-xs bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-stone-700 mb-1">
+                WhatsApp Gateway API Token (Fonnte / Wablas)
+              </label>
+              <input
+                type="password"
+                value={form.whatsappGatewayApiKey || ''}
+                onChange={(e) => setForm({ ...form, whatsappGatewayApiKey: e.target.value })}
+                placeholder="Token API Fonnte..."
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none font-mono text-xs bg-white"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

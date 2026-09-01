@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Truck,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -119,11 +120,11 @@ export const DashboardOverview: React.FC<DashboardProps> = ({
           </button>
 
           <button
-            onClick={onOpenNewPurchase}
-            className="px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs rounded-lg border border-stone-700 transition flex items-center space-x-1.5 whitespace-nowrap"
+            onClick={() => onNavigate('whatsapp-bot')}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition flex items-center space-x-1.5 shadow-sm whitespace-nowrap"
           >
-            <Boxes className="w-3.5 h-3.5" />
-            <span>+ Belanja Bahan (PO)</span>
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>WhatsApp Bot (4 Menu)</span>
           </button>
         </div>
       </div>

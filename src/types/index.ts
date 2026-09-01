@@ -385,13 +385,84 @@ export interface BusinessProfile {
   address: string;
   city: string;
   operatingHours: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  adminWhatsapp?: string;
   currency: string;
   invoicePrefix: string;
   productionBatchPrefix: string;
   purchasePrefix: string;
+  bankAccountInfo?: string;
+  invoiceFooterNotes?: string;
   whatsappGreetingTemplate: string;
   whatsappInvoiceTemplate: string;
   whatsappFollowUpTemplate: string;
+  whatsappBotEnabled?: boolean;
+  adminWhatsAppPhone?: string;
+  whatsappGatewayApiKey?: string;
+  whatsappGatewayProvider?: 'FONNTE' | 'WABA_META' | 'WABLAS' | 'GENERIC_WEBHOOK';
+}
+
+export type WhatsAppBotStep =
+  | 'MAIN_MENU'
+  | 'ORDER_SELECT_PRODUCT'
+  | 'SELECTING_PRODUCT'
+  | 'ORDER_QUANTITY'
+  | 'INPUT_QTY'
+  | 'ORDER_FULFILLMENT'
+  | 'SELECTING_DELIVERY'
+  | 'ORDER_ADDRESS'
+  | 'INPUT_ADDRESS'
+  | 'ORDER_DATE'
+  | 'ORDER_CONFIRMATION'
+  | 'CONFIRMING_ORDER'
+  | 'HUMAN_HANDOFF'
+  | 'ADMIN_HANDOFF'
+  | 'ORDER_COMPLETED';
+
+export interface WhatsAppMessageItem {
+  id: string;
+  sender: 'user' | 'bot';
+  text: string;
+  timestamp: string;
+  buttons?: Array<{ id: string; label: string; payload: string }>;
+  header?: string;
+  footer?: string;
+}
+
+export interface WhatsAppSession {
+  id: string;
+  customerPhone: string;
+  customerName: string;
+  currentStep: WhatsAppBotStep;
+  selectedProduct?: {
+    id: string;
+    name: string;
+    sku?: string;
+    sellingPrice: number;
+    baseHpp?: number;
+    stockFinishedGoods?: number;
+  };
+  cartItem?: {
+    productId: string;
+    productName: string;
+    unitPrice: number;
+    qty: number;
+    hppSnapshot: number;
+  };
+  quantity?: number;
+  deliveryType?: 'DELIVERY' | 'PICKUP';
+  customerAddress?: string;
+  deliveryAddress?: string;
+  deliveryDate?: string;
+  deliveryDateText?: string;
+  deliveryTime?: string;
+  shippingFee?: number;
+  notes?: string;
+  lastMessageTime: string;
+  isHumanHandled: boolean;
+  messages: WhatsAppMessageItem[];
 }
 
 export interface StockMovement {

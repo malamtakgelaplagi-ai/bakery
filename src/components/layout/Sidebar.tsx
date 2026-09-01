@@ -18,6 +18,7 @@ import {
   Menu,
   MoreHorizontal,
   FileSpreadsheet,
+  MessageSquare,
 } from 'lucide-react';
 import { useBakery } from '../../context/BakeryContext';
 
@@ -90,6 +91,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Pelanggan & CRM WA',
       icon: Users,
       badge: null,
+    },
+    {
+      id: 'whatsapp-bot',
+      label: 'WhatsApp Bot Hub',
+      icon: MessageSquare,
+      badge: '4 Menu',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
     },
     {
       id: 'waste',

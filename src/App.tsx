@@ -13,6 +13,7 @@ import { WasteTracker } from './components/waste/WasteTracker';
 import { FinancialReports } from './components/reports/FinancialReports';
 import { SettingsView } from './components/settings/SettingsView';
 import { GoogleSheetsManager } from './components/sheets/GoogleSheetsManager';
+import { WhatsAppBotManager } from './components/whatsapp/WhatsAppBotManager';
 import { NewOrderModal } from './components/pos/NewOrderModal';
 import { NewProductionModal } from './components/production/NewProductionModal';
 
@@ -44,6 +45,9 @@ const AppContent: React.FC = () => {
         return <IngredientsList />;
       case 'customers':
         return <CustomerList />;
+      case 'whatsapp-bot':
+      case 'whatsapp':
+        return <WhatsAppBotManager onNavigateToPos={() => setActiveTab('pos')} />;
       case 'waste':
         return <WasteTracker />;
       case 'finance':
