@@ -9,6 +9,7 @@ import {
 } from '../../utils/formatters';
 import { InvoiceModal } from './InvoiceModal';
 import { NewOrderModal } from './NewOrderModal';
+import { GoogleSyncBanner } from '../common/GoogleSyncBanner';
 import {
   Receipt,
   Plus,
@@ -73,6 +74,12 @@ export const PosAndOrders: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Live Google Sheets Banner */}
+      <GoogleSyncBanner
+        moduleName="Kasir POS & Pesanan"
+        moduleDescription="Setiap transaksi kasir, perubahan status pembayaran, dan pengiriman otomatis tersimpan langsung ke sheet 🧾 Orders_Penjualan di Google Spreadsheet."
+      />
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
         <div>

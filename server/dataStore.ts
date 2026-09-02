@@ -118,6 +118,24 @@ const INITIAL_PRODUCTS: Product[] = [
     sizeSpec: 'Loyang 22x10 cm (±680 gr)',
     description: 'Topping irisan kacang almond panggang renyah dengan aroma kayu manis semerbak.',
   },
+  {
+    id: 'prod-5',
+    sku: 'BL-JAD-05',
+    name: 'Bolu Jadoel',
+    recipeId: 'rec-4',
+    recipeVersionId: 'ver-4-0',
+    category: 'Bolu Tradisional',
+    sellingPrice: 55000,
+    baseHpp: 28805.55,
+    grossMarginPercent: 47.6,
+    stockFinishedGoods: 10,
+    minStockFinishedGoods: 4,
+    shelfLifeDays: 4,
+    bakedWeightGram: 650,
+    status: 'active',
+    sizeSpec: 'Loyang Tulban Ø20 cm (±650 gr)',
+    description: 'Bolu Jadoel klasik lembut aroma margarin khas dengan motif marmer cokelat nostalgia.',
+  },
 ];
 
 const INITIAL_CUSTOMERS: Customer[] = [
@@ -270,9 +288,19 @@ class DataStore {
       let cust = this.db.customers.find((c) => (c.phone || '').replace(/[^0-9]/g, '') === phone);
       if (cust) {
         cust.totalOrders += 1;
-        cust.totalSpend += totalAmount;
+        const currentSpend = Number(cust.totalSpend ?? (cust as any).totalSpent) || 0;
+        const nextSpend = currentSpend + totalAmount;
+        cust.totalSpend = nextSpend;
+        (cust as any).totalSpent = nextSpend;
         cust.lastOrderDate = newOrder.date;
-        if (cust.totalOrders >= 4 || cust.totalSpend >= 500000) {
+        if (newOrder.customerAddress && (!cust.address || cust.address === '-')) {
+          cust.address = newOrder.customerAddress;
+        }
+        if (!Array.isArray(cust.tags)) cust.tags = [];
+        if (!cust.tags.includes('WhatsApp')) cust.tags.push('WhatsApp');
+        if (!cust.tags.includes('Langganan')) cust.tags.push('Langganan');
+
+        if (cust.totalOrders >= 4 || nextSpend >= 500000) {
           cust.tier = 'LOYAL';
         } else if (cust.totalOrders >= 2) {
           cust.tier = 'AKTIF';
@@ -287,10 +315,11 @@ class DataStore {
           tier: 'BARU',
           totalOrders: 1,
           totalSpend: totalAmount,
+          totalSpent: totalAmount,
           lastOrderDate: newOrder.date,
-          tags: ['WhatsApp'],
+          tags: ['WhatsApp', 'Langganan'],
         };
-        this.db.customers.push(newCust);
+        this.db.customers.unshift(newCust);
       }
     }
 

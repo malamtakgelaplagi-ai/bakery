@@ -33,12 +33,17 @@ export interface BakeryStateExport {
 }
 
 export interface BakeryStateImport {
+  businessProfile?: BusinessProfile;
   ingredients?: Ingredient[];
+  recipes?: Recipe[];
+  products?: Product[];
   orders?: Order[];
   productions?: ProductionRun[];
-  products?: Product[];
   customers?: Customer[];
   wasteRecords?: WasteRecord[];
+  suppliers?: Supplier[];
+  purchases?: Purchase[];
+  expenses?: Expense[];
 }
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -52,6 +57,8 @@ export const SHEET_NAMES = {
   PRODUCTION: '👨‍🍳 Produksi_Batch',
   WASTE: '🗑️ Waste_Kerusakan',
   PURCHASES: '🛒 Pembelian_PO',
+  EXPENSES: '💸 Pengeluaran_Biaya',
+  SETTINGS: '⚙️ Profil_Pengaturan',
 };
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -132,6 +139,20 @@ export async function createBakerySpreadsheet(
           sheetId: 7,
           title: SHEET_NAMES.PURCHASES,
           gridProperties: { rowCount: 500, columnCount: 10 },
+        },
+      },
+      {
+        properties: {
+          sheetId: 8,
+          title: SHEET_NAMES.EXPENSES,
+          gridProperties: { rowCount: 500, columnCount: 10 },
+        },
+      },
+      {
+        properties: {
+          sheetId: 9,
+          title: SHEET_NAMES.SETTINGS,
+          gridProperties: { rowCount: 50, columnCount: 10 },
         },
       },
     ],
@@ -479,6 +500,125 @@ export async function loadAllDataFromGoogleSheets(
     console.warn('Gagal membaca sheet Produksi:', e);
   }
 
+  try {
+    // 4. Read Products Catalog
+    const prodRows = await readSheetRange(spreadsheetId, `'${SHEET_NAMES.PRODUCTS}'!A2:I`);
+    if (prodRows && prodRows.length > 0) {
+      result.products = prodRows
+        .filter((r) => r[1] && String(r[1]).trim() !== '')
+        .map((r, idx) => {
+          const id = String(r[0] || `prod-sheet-${idx + 1}`);
+          const sku = String(r[1] || `PRD-${idx + 1}`);
+          const name = String(r[2] || 'Produk');
+          const category = String(r[3] || 'Bolu Klasik');
+          const baseHpp = Number(r[4]) || 0;
+          const sellingPrice = Number(r[5]) || 0;
+          const stockFinishedGoods = Number(r[7]) || 0;
+          const shelfLifeDays = Number(r[8]) || 4;
+
+          const existing = currentProducts.find((p) => p.sku === sku || p.name.toLowerCase() === name.toLowerCase());
+
+          return {
+            id: existing?.id || id,
+            sku,
+            name,
+            category,
+            baseHpp,
+            sellingPrice,
+            grossMarginPercent: sellingPrice > 0 ? ((sellingPrice - baseHpp) / sellingPrice) * 100 : 0,
+            stockFinishedGoods,
+            minStockFinishedGoods: existing?.minStockFinishedGoods || 2,
+            shelfLifeDays,
+            bakedWeightGram: existing?.bakedWeightGram || 650,
+            status: existing?.status || 'active',
+            recipeId: existing?.recipeId || 'rec-1',
+            recipeVersionId: existing?.recipeVersionId || 'ver-1-0',
+            sizeSpec: existing?.sizeSpec || 'Loyang Standar',
+            description: existing?.description || 'Disinkronkan langsung dari database Google Sheets.',
+          };
+        });
+    }
+  } catch (e) {
+    console.warn('Gagal membaca sheet Produk:', e);
+  }
+
+  try {
+    // 5. Read Customers CRM
+    const custRows = await readSheetRange(spreadsheetId, `'${SHEET_NAMES.CUSTOMERS}'!A2:H`);
+    if (custRows && custRows.length > 0) {
+      result.customers = custRows
+        .filter((r) => r[1] && String(r[1]).trim() !== '')
+        .map((r, idx) => {
+          const id = String(r[0] || `cust-sheet-${idx + 1}`);
+          const name = String(r[1] || 'Pelanggan');
+          const phone = String(r[2] || '');
+          const address = r[3] && r[3] !== '-' ? String(r[3]) : '';
+          const totalOrders = Number(r[4]) || 0;
+          const totalSpend = Number(r[5]) || 0;
+          const tags = r[6] ? String(r[6]).split(',').map((t) => t.trim()).filter(Boolean) : [];
+          const notes = r[7] && r[7] !== '-' ? String(r[7]) : '';
+
+          return {
+            id,
+            name,
+            phone,
+            address,
+            tags,
+            totalOrders,
+            totalSpend,
+            lastOrderDate: new Date().toISOString().split('T')[0],
+            notes,
+            tier: totalSpend > 500000 ? 'VIP' : totalSpend > 200000 ? 'REGULAR' : 'NEW',
+          };
+        });
+    }
+  } catch (e) {
+    console.warn('Gagal membaca sheet Pelanggan:', e);
+  }
+
+  try {
+    // 6. Read Expenses
+    const expRows = await readSheetRange(spreadsheetId, `'${SHEET_NAMES.EXPENSES}'!A2:F`);
+    if (expRows && expRows.length > 0) {
+      result.expenses = expRows
+        .filter((r) => r[1] && String(r[1]).trim() !== '')
+        .map((r, idx) => ({
+          id: `exp-sheet-${idx + 1}`,
+          date: String(r[0] || new Date().toISOString().split('T')[0]),
+          category: String(r[1] || 'Operasional Toko'),
+          description: String(r[2] || 'Biaya'),
+          amount: Number(r[3]) || 0,
+          paymentMethod: String(r[4] || 'CASH') as any,
+          recipient: r[5] ? String(r[5]) : undefined,
+        }));
+    }
+  } catch (e) {
+    console.warn('Gagal membaca sheet Biaya:', e);
+  }
+
+  try {
+    // 7. Read Waste Records
+    const wasteRows = await readSheetRange(spreadsheetId, `'${SHEET_NAMES.WASTE}'!A2:I`);
+    if (wasteRows && wasteRows.length > 0) {
+      result.wasteRecords = wasteRows
+        .filter((r) => r[2] && String(r[2]).trim() !== '')
+        .map((r, idx) => ({
+          id: `wst-sheet-${idx + 1}`,
+          date: String(r[0] || new Date().toISOString().split('T')[0]),
+          type: (String(r[1] || 'PRODUK_JADI') as any),
+          itemName: String(r[2] || 'Item'),
+          quantity: Number(r[3]) || 1,
+          unit: String(r[4] || 'pcs'),
+          lostCost: Number(r[5]) || 0,
+          reason: String(r[6] || 'Kerusakan'),
+          operatorName: String(r[7] || 'Staff'),
+          notes: r[8] ? String(r[8]) : '',
+        }));
+    }
+  } catch (e) {
+    console.warn('Gagal membaca sheet Waste:', e);
+  }
+
   return result;
 }
 
@@ -719,6 +859,35 @@ export async function syncAllDataToGoogleSheets(
     po.notes || '-',
   ]);
 
+  // 9. Expenses Sheet
+  const expenseHeaders = [
+    'Tanggal',
+    'Kategori Biaya',
+    'Keterangan',
+    'Nominal (Rp)',
+    'Metode Bayar',
+    'Penerima / Vendor',
+  ];
+  const expenseRows = (data.expenses || []).map((exp) => [
+    exp.date,
+    exp.category,
+    exp.description,
+    exp.amount,
+    exp.paymentMethod || 'CASH',
+    exp.recipient || '-',
+  ]);
+
+  // 10. Settings & Profile Sheet
+  const settingHeaders = ['Key Parameter', 'Nilai / Konfigurasi', 'Terakhir Diperbarui'];
+  const profile = data.businessProfile;
+  const settingRows = [
+    ['Nama Usaha', profile?.name || 'PUSAKA Bakery', new Date().toISOString()],
+    ['Alamat Toko', profile?.address || '-', new Date().toISOString()],
+    ['No. WhatsApp', profile?.phone || '-', new Date().toISOString()],
+    ['Rekening Bank / QRIS', `${profile?.bankName || ''} - ${profile?.bankAccount || ''}`, new Date().toISOString()],
+    ['Sync Engine Status', 'REALTIME_GOOGLE_SHEETS_MASTER', new Date().toISOString()],
+  ];
+
   const payload = {
     valueInputOption: 'USER_ENTERED',
     data: [
@@ -753,6 +922,14 @@ export async function syncAllDataToGoogleSheets(
       {
         range: `'${SHEET_NAMES.PURCHASES}'!A1`,
         values: [purchaseHeaders, ...purchaseRows],
+      },
+      {
+        range: `'${SHEET_NAMES.EXPENSES}'!A1`,
+        values: [expenseHeaders, ...expenseRows],
+      },
+      {
+        range: `'${SHEET_NAMES.SETTINGS}'!A1`,
+        values: [settingHeaders, ...settingRows],
       },
     ],
   };

@@ -1,0 +1,226 @@
+{
+  "businessProfile": {
+    "name": "PUSAKA Bakery & Bolu",
+    "tagline": "Artisan Bolu Pisang Premium & Cake Nusantara",
+    "ownerName": "H. Suherman & Tim",
+    "phone": "081234567890",
+    "email": "pusaka.bakery@gmail.com",
+    "address": "Jl. R.E. Martadinata No. 88, Citarum",
+    "city": "Bandung, Jawa Barat",
+    "operatingHours": "07.00 - 20.00 WIB",
+    "googleMapsUrl": "https://maps.google.com/?q=Jl.+R.E.+Martadinata+No.+88+Bandung",
+    "latitude": -6.90835,
+    "longitude": 107.61895,
+    "adminWhatsapp": "081234567890",
+    "adminWhatsAppPhone": "081234567890",
+    "currency": "IDR",
+    "invoicePrefix": "INV-PSK",
+    "productionBatchPrefix": "BATCH-PSK",
+    "purchasePrefix": "PO-PSK",
+    "bankAccountInfo": "BCA: 1234567890 a.n PUSAKA BOLU\nMandiri: 9876543210 a.n PUSAKA BOLU",
+    "invoiceFooterNotes": "Terima kasih atas pesanan Anda! Simpan di suhu ruang, habiskan dalam 4 hari.",
+    "whatsappGreetingTemplate": "Halo Kak! Selamat datang di PUSAKA Bakery.",
+    "whatsappInvoiceTemplate": "",
+    "whatsappFollowUpTemplate": "",
+    "whatsappBotEnabled": true,
+    "whatsappGatewayProvider": "FONNTE"
+  },
+  "products": [
+    {
+      "id": "prod-1",
+      "sku": "BL-ORIG-01",
+      "name": "Bolu Pisang Raja Original",
+      "recipeId": "rec-1",
+      "recipeVersionId": "ver-1",
+      "category": "Bolu Pisang",
+      "sellingPrice": 45000,
+      "baseHpp": 22500,
+      "grossMarginPercent": 50,
+      "stockFinishedGoods": 24,
+      "minStockFinishedGoods": 10,
+      "shelfLifeDays": 4,
+      "bakedWeightGram": 650,
+      "status": "active",
+      "sizeSpec": "Loyang 22x10 cm (±650 gr)",
+      "description": "Bolu pisang klasik dengan pisang raja matang pohon, tekstur super moist dan aroma wangi harum alami."
+    },
+    {
+      "id": "prod-2",
+      "sku": "BL-KEJU-02",
+      "name": "Bolu Pisang Keju Parut Super",
+      "recipeId": "rec-2",
+      "recipeVersionId": "ver-2",
+      "category": "Bolu Pisang",
+      "sellingPrice": 55000,
+      "baseHpp": 28000,
+      "grossMarginPercent": 49.1,
+      "stockFinishedGoods": 18,
+      "minStockFinishedGoods": 8,
+      "shelfLifeDays": 4,
+      "bakedWeightGram": 700,
+      "status": "active",
+      "sizeSpec": "Loyang 22x10 cm (±700 gr)",
+      "description": "Bolu pisang moist dengan taburan keju cheddar parut melimpah di luar dan gurih di dalam."
+    },
+    {
+      "id": "prod-3",
+      "sku": "BL-COK-03",
+      "name": "Bolu Pisang Cokelat Ganache",
+      "recipeId": "rec-3",
+      "recipeVersionId": "ver-3",
+      "category": "Bolu Pisang",
+      "sellingPrice": 55000,
+      "baseHpp": 27500,
+      "grossMarginPercent": 50,
+      "stockFinishedGoods": 15,
+      "minStockFinishedGoods": 8,
+      "shelfLifeDays": 4,
+      "bakedWeightGram": 700,
+      "status": "active",
+      "sizeSpec": "Loyang 22x10 cm (±700 gr)",
+      "description": "Kombinasi pisang raja dan lelehan cokelat pekat premium ganache manis pas tidak enek."
+    },
+    {
+      "id": "prod-4",
+      "sku": "BL-ALM-04",
+      "name": "Bolu Pisang Kacang Almond",
+      "recipeId": "rec-4",
+      "recipeVersionId": "ver-4",
+      "category": "Bolu Pisang",
+      "sellingPrice": 60000,
+      "baseHpp": 31000,
+      "grossMarginPercent": 48.3,
+      "stockFinishedGoods": 12,
+      "minStockFinishedGoods": 6,
+      "shelfLifeDays": 4,
+      "bakedWeightGram": 680,
+      "status": "active",
+      "sizeSpec": "Loyang 22x10 cm (±680 gr)",
+      "description": "Topping irisan kacang almond panggang renyah dengan aroma kayu manis semerbak."
+    },
+    {
+      "id": "prod-5",
+      "sku": "BL-JAD-05",
+      "name": "Bolu Jadoel",
+      "recipeId": "rec-4",
+      "recipeVersionId": "ver-4-0",
+      "category": "Bolu Tradisional",
+      "sellingPrice": 55000,
+      "baseHpp": 28805.55,
+      "grossMarginPercent": 47.6,
+      "stockFinishedGoods": 10,
+      "minStockFinishedGoods": 4,
+      "shelfLifeDays": 4,
+      "bakedWeightGram": 650,
+      "status": "active",
+      "sizeSpec": "Loyang Tulban Ø20 cm (±650 gr)",
+      "description": "Bolu Jadoel klasik lembut aroma margarin khas dengan motif marmer cokelat nostalgia."
+    }
+  ],
+  "orders": [],
+  "customers": [
+    {
+      "id": "cust-1",
+      "name": "Ibu Ratna Juwita",
+      "phone": "081298765432",
+      "email": "ratna.juwita@gmail.com",
+      "address": "Jl. Dago Asri No. 12, Coblong, Bandung",
+      "tier": "LOYAL",
+      "totalOrders": 6,
+      "totalSpend": 540000,
+      "lastOrderDate": "2026-08-30",
+      "tags": [
+        "VIP",
+        "Pecinta Keju"
+      ]
+    }
+  ],
+  "whatsappSessions": [
+    {
+      "id": "sess-100519548854426",
+      "customerPhone": "100519548854426",
+      "customerName": "Dawud",
+      "currentStep": "HUMAN_HANDOFF",
+      "isHumanHandled": true,
+      "lastMessageTime": "09.35",
+      "messages": [
+        {
+          "id": "msg-in-1788255158673",
+          "sender": "user",
+          "text": "Teu kamamana? Ane geus maghriban sigana karek bisa kaluar.",
+          "timestamp": "09.32"
+        },
+        {
+          "id": "msg-1788255158674",
+          "sender": "bot",
+          "text": "🍌 *PUSAKA BAKERY & BOLU*\nArtisan Bolu Pisang Premium & Cake Nusantara\n\nSelamat datang Kak Dawud.\n\nSilakan pilih layanan kami:\n\n1. 🛒 *Pesan Bolu*\n2. 📍 *Lokasi Toko/Pabrik*\n3. 🍰 *Jenis Varian Bolu*\n4. 👨‍💼 *Chat dengan Admin*\n\nBalas angka *1–4* untuk memilih menu.\nKetik *0* kapan saja untuk kembali ke menu ini.",
+          "timestamp": "09.32",
+          "header": "🍌 PUSAKA Bakery & Bolu",
+          "footer": "PUSAKA Bakery Automation",
+          "buttons": [
+            {
+              "id": "btn-1",
+              "label": "1️⃣ Pesan Bolu",
+              "payload": "1"
+            },
+            {
+              "id": "btn-2",
+              "label": "2️⃣ 📍 Lokasi Toko",
+              "payload": "2"
+            },
+            {
+              "id": "btn-3",
+              "label": "3️⃣ 🍰 Varian Bolu",
+              "payload": "3"
+            },
+            {
+              "id": "btn-4",
+              "label": "4️⃣ 👨‍💼 Chat Admin",
+              "payload": "4"
+            }
+          ]
+        },
+        {
+          "id": "msg-in-1788255171314",
+          "sender": "user",
+          "text": "4",
+          "timestamp": "09.32"
+        },
+        {
+          "id": "msg-1788255171314",
+          "sender": "bot",
+          "text": "👨‍💼 *CHAT DENGAN ADMIN*\n\nBaik Kak Dawud, percakapan ini sudah kami teruskan ke Admin *PUSAKA Bakery & Bolu* (tanpa bot).\n\nSilakan tuliskan pertanyaan atau kebutuhan Kakak di sini. Admin kami akan segera membalas.\n\nAtau klik link WhatsApp langsung:\n👉 https://wa.me/6281234567890?text=Halo%20Admin%20PUSAKA%20Bakery%20%26%20Bolu%2C%20saya%20Dawud%20ingin%20bertanya%20langsung.\n\n_Ketik *0* kapan saja jika ingin kembali ke menu otomatis._",
+          "timestamp": "09.32",
+          "header": "👨‍💼 Handoff Admin (Zero AI)",
+          "buttons": [
+            {
+              "id": "btn-0",
+              "label": "🔙 Kembali ke Menu Utama",
+              "payload": "0"
+            }
+          ]
+        },
+        {
+          "id": "msg-in-1788255195411",
+          "sender": "user",
+          "text": "Kadon pesen bolu 🤦‍♂️",
+          "timestamp": "09.33"
+        },
+        {
+          "id": "msg-in-1788255326922",
+          "sender": "user",
+          "text": "Ieu domain perpanjang nyak..",
+          "timestamp": "09.35"
+        }
+      ]
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log-1788251363111",
+      "timestamp": "2026-09-01T08:29:23.111Z",
+      "action": "INIT_SERVER_DATABASE",
+      "details": "Database server PUSAKA Bakery diinisialisasi otomatis."
+    }
+  ]
+}

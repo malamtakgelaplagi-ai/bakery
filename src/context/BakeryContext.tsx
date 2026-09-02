@@ -12,6 +12,7 @@ import {
   ProductionStatus,
   WasteRecord,
   Customer,
+  CustomerTier,
   Order,
   OrderStatus,
   FulfillmentStatus,
@@ -395,6 +396,96 @@ const INITIAL_INGREDIENTS: Ingredient[] = [
     defaultSupplierName: 'Distributor Bahan Kue Barokah Jaya',
     status: 'active',
     updatedAt: '2026-08-23',
+  },
+  {
+    id: 'ing-16',
+    sku: 'RAW-MRG-01',
+    name: 'Margarin Cake & Cookies Super (Palmia / Blue Band)',
+    category: 'Dairy & Lemak',
+    buyUnit: 'kg',
+    recipeUnit: 'g',
+    conversionFactor: 1000,
+    latestBuyPrice: 26000,
+    costPerRecipeUnit: 26,
+    stockInRecipeUnit: 15000, // 15 kg
+    minStockInRecipeUnit: 3000,
+    defaultSupplierId: 'sup-3',
+    defaultSupplierName: 'Distributor Bahan Kue Barokah Jaya',
+    status: 'active',
+    notes: 'Margarin khusus cake beraroma butter gurih harum',
+    updatedAt: '2026-09-01',
+  },
+  {
+    id: 'ing-17',
+    sku: 'RAW-SP-01',
+    name: 'Emulsifier Kue (SP / Ovalet / TBM)',
+    category: 'Bahan Pengembang & Ragi',
+    buyUnit: 'pack (100g)',
+    recipeUnit: 'g',
+    conversionFactor: 100,
+    latestBuyPrice: 12000,
+    costPerRecipeUnit: 120,
+    stockInRecipeUnit: 800, // 800g
+    minStockInRecipeUnit: 150,
+    defaultSupplierId: 'sup-3',
+    defaultSupplierName: 'Distributor Bahan Kue Barokah Jaya',
+    status: 'active',
+    notes: 'Stabilizer kocokan telur & gula agar adonan kokoh dan mengembang sempurna',
+    updatedAt: '2026-09-01',
+  },
+  {
+    id: 'ing-18',
+    sku: 'RAW-SSU-27',
+    name: 'Susu Bubuk Full Cream (Sachet 27 gr)',
+    category: 'Dairy & Lemak',
+    buyUnit: 'renceng (10 saset)',
+    recipeUnit: 'g',
+    conversionFactor: 270,
+    latestBuyPrice: 36000,
+    costPerRecipeUnit: 133.33,
+    stockInRecipeUnit: 1350, // 50 saset
+    minStockInRecipeUnit: 270,
+    defaultSupplierId: 'sup-3',
+    defaultSupplierName: 'Distributor Bahan Kue Barokah Jaya',
+    status: 'active',
+    notes: '1 sachet = 27 gr memberikan aroma milky gurih legit',
+    updatedAt: '2026-09-01',
+  },
+  {
+    id: 'ing-19',
+    sku: 'RAW-BKP-01',
+    name: 'Baking Powder Double Acting',
+    category: 'Bahan Pengembang & Ragi',
+    buyUnit: 'botol (110g)',
+    recipeUnit: 'g',
+    conversionFactor: 110,
+    latestBuyPrice: 11000,
+    costPerRecipeUnit: 100,
+    stockInRecipeUnit: 660,
+    minStockInRecipeUnit: 100,
+    defaultSupplierId: 'sup-3',
+    defaultSupplierName: 'Distributor Bahan Kue Barokah Jaya',
+    status: 'active',
+    notes: 'Pengembang ganda saat pencampuran dan pemanggangan oven',
+    updatedAt: '2026-09-01',
+  },
+  {
+    id: 'ing-20',
+    sku: 'RAW-PST-COK',
+    name: 'Pasta Cokelat Black Forest / Dark Chocolate Paste',
+    category: 'Perasa, Pewarna & Rempah',
+    buyUnit: 'botol (60ml)',
+    recipeUnit: 'g',
+    conversionFactor: 60,
+    latestBuyPrice: 15000,
+    costPerRecipeUnit: 250,
+    stockInRecipeUnit: 450,
+    minStockInRecipeUnit: 60,
+    defaultSupplierId: 'sup-3',
+    defaultSupplierName: 'Distributor Bahan Kue Barokah Jaya',
+    status: 'active',
+    notes: 'Aroma cokelat pekat untuk aksen motif marmer swirl Bolu Jadoel',
+    updatedAt: '2026-09-01',
   }
 ];
 
@@ -566,6 +657,55 @@ const INITIAL_RECIPES: Recipe[] = [
         createdBy: 'Chef Rendy',
       }
     ]
+  },
+  {
+    id: 'rec-4',
+    name: 'Bolu Jadoel (Ø20 cm / Loyang Tulban)',
+    category: 'Bolu Tradisional',
+    description: 'Resep otentik Bolu Jadoel klasik super lembut & wangi butter margarin dengan motif marmer cokelat nostalgia.',
+    currentVersionId: 'ver-4-0',
+    createdAt: '2026-09-01',
+    updatedAt: '2026-09-01',
+    versions: [
+      {
+        id: 'ver-4-0',
+        versionNumber: 'v1.0',
+        changeLog: 'Resep standar Bolu Jadoel: 125g margarin leleh, 4 butir telur (±220g), 120g gula pasir (8 sdm), 1 sdt emulsifier SP (5g), 160g terigu pro sedang (16 sdm), 1 saset susu bubuk (27g), ½ sdt baking powder (2.5g), 1 sdt pasta coklat (5g), serta olesan carlo loyang (1 sdt terigu, 1 sdt margarin, 1 sdt minyak).',
+        targetBatterWeightGram: 700,
+        targetBakedWeightGram: 650,
+        yieldQty: 1,
+        items: [
+          { id: 'bj-1', ingredientId: 'ing-16', ingredientName: 'Margarin Cake (125 gr Lelehkan)', quantity: 125, recipeUnit: 'g', unitCostSnapshot: 26, cost: 3250 },
+          { id: 'bj-2', ingredientId: 'ing-2', ingredientName: 'Telur Ayam Segar (4 Butir)', quantity: 220, recipeUnit: 'g', unitCostSnapshot: 28, cost: 6160 },
+          { id: 'bj-3', ingredientId: 'ing-3', ingredientName: 'Gula Pasir Kristal (120 gr / 8 sdm)', quantity: 120, recipeUnit: 'g', unitCostSnapshot: 17.5, cost: 2100 },
+          { id: 'bj-4', ingredientId: 'ing-17', ingredientName: 'Emulsifier SP (1 sdt)', quantity: 5, recipeUnit: 'g', unitCostSnapshot: 120, cost: 600 },
+          { id: 'bj-5', ingredientId: 'ing-4', ingredientName: 'Tepung Terigu Pro Sedang (160 gr / 16 sdm)', quantity: 160, recipeUnit: 'g', unitCostSnapshot: 14, cost: 2240 },
+          { id: 'bj-6', ingredientId: 'ing-18', ingredientName: 'Susu Bubuk Full Cream (1 saset 27 gr)', quantity: 27, recipeUnit: 'g', unitCostSnapshot: 133.33, cost: 3600 },
+          { id: 'bj-7', ingredientId: 'ing-19', ingredientName: 'Baking Powder Double Acting (½ sdt)', quantity: 2.5, recipeUnit: 'g', unitCostSnapshot: 100, cost: 250 },
+          { id: 'bj-8', ingredientId: 'ing-20', ingredientName: 'Pasta Cokelat Marmer (1 sdt)', quantity: 5, recipeUnit: 'g', unitCostSnapshot: 250, cost: 1250 },
+          { id: 'bj-9', ingredientId: 'ing-4', ingredientName: 'Tepung Terigu (Olesan Loyang 1 sdt)', quantity: 5, recipeUnit: 'g', unitCostSnapshot: 14, cost: 70 },
+          { id: 'bj-10', ingredientId: 'ing-16', ingredientName: 'Margarin (Olesan Loyang 1 sdt)', quantity: 5, recipeUnit: 'g', unitCostSnapshot: 26, cost: 130 },
+          { id: 'bj-11', ingredientId: 'ing-5', ingredientName: 'Minyak Goreng (Olesan Loyang 1 sdt)', quantity: 5, recipeUnit: 'g', unitCostSnapshot: 21.11, cost: 105.55 },
+        ],
+        packaging: [
+          { id: 'pkg-1', ingredientId: 'ing-10', name: 'Box Bolu Premium Ivory 20x20 Window', quantity: 1, unitCost: 2500, totalCost: 2500 },
+          { id: 'pkg-2', ingredientId: 'ing-11', name: 'Sticker Segel Logo PUSAKA Gold Foil', quantity: 1, unitCost: 350, totalCost: 350 },
+          { id: 'pkg-3', ingredientId: 'ing-12', name: 'Alas Baking Paper / Plastik OPP Foodgrade', quantity: 1, unitCost: 200, totalCost: 200 },
+        ],
+        directCosts: [
+          { id: 'dc-1', name: 'Gas Elpiji Oven (per loyang)', costType: 'per_unit', amount: 1500 },
+          { id: 'dc-2', name: 'Listrik Mixer & Lampu Oven', costType: 'per_unit', amount: 800 },
+          { id: 'dc-3', name: 'Upah Baker & Asisten Produksi', costType: 'per_unit', amount: 3500 },
+        ],
+        totalRawCost: 19955.55,
+        totalPackagingCost: 3050,
+        totalDirectCost: 5800,
+        totalHppPerUnit: 28805.55,
+        notes: 'Tekstur super lembut & moist, tidak seret di leher. Cocok untuk arisan, teman kopi/teh, dan hantaran.',
+        createdAt: '2026-09-01',
+        createdBy: 'Chef & Tim Baker',
+      }
+    ]
   }
 ];
 
@@ -623,6 +763,24 @@ const INITIAL_PRODUCTS: Product[] = [
     minStockFinishedGoods: 4,
     status: 'active',
     description: 'Sensasi lelehan cokelat dark premium di setiap gigitan bolu pisang lembut.',
+    shelfLifeDays: 4,
+  },
+  {
+    id: 'prod-4',
+    sku: 'BL-JAD-01',
+    name: 'Bolu Jadoel',
+    category: 'Bolu Tradisional',
+    sizeSpec: 'Loyang Tulban Ø20 cm (±650 gr)',
+    bakedWeightGram: 650,
+    recipeId: 'rec-4',
+    recipeVersionId: 'ver-4-0',
+    sellingPrice: 55000,
+    baseHpp: 28805.55,
+    grossMarginPercent: 47.6,
+    stockFinishedGoods: 10,
+    minStockFinishedGoods: 4,
+    status: 'active',
+    description: 'Bolu Jadoel klasik super lembut & moist dengan aroma margarin harum dan aksen motif marmer cokelat otentik.',
     shelfLifeDays: 4,
   },
 ];
@@ -1236,6 +1394,10 @@ interface BakeryContextType {
   googleSheetsConfig: GoogleSheetsConfig;
   isGoogleLoading: boolean;
   isGoogleSyncing: boolean;
+  realtimeSyncStatus: 'idle' | 'saving' | 'synced' | 'fetching' | 'error' | 'disconnected';
+  lastLiveSyncTimestamp: string | null;
+  isRealtimeSyncing: boolean;
+  googleSheetsActive: boolean;
   signInWithGoogle: () => Promise<{ success: boolean; message?: string }>;
   signInWithGoogleRedirect: () => Promise<void>;
   signOutFromGoogle: () => Promise<void>;
@@ -1293,7 +1455,10 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [ingredients, setIngredients] = useState<Ingredient[]>(() => {
     const list = safeParseJson<Ingredient[]>(`${STORAGE_KEY}_INGREDIENTS`, INITIAL_INGREDIENTS);
-    return Array.isArray(list) ? list : INITIAL_INGREDIENTS;
+    if (!Array.isArray(list)) return INITIAL_INGREDIENTS;
+    const existingIds = new Set(list.map(i => i.id));
+    const missingInit = INITIAL_INGREDIENTS.filter(i => !existingIds.has(i.id));
+    return [...list, ...missingInit];
   });
 
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
@@ -1309,8 +1474,11 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
     const list = safeParseJson<Recipe[]>(`${STORAGE_KEY}_RECIPES`, INITIAL_RECIPES);
-    if (!Array.isArray(list) || list.length === 0) return INITIAL_RECIPES;
-    return list.map(r => ({
+    let baseList = Array.isArray(list) && list.length > 0 ? list : INITIAL_RECIPES;
+    const existingIds = new Set(baseList.map(r => r.id));
+    const missingInit = INITIAL_RECIPES.filter(r => !existingIds.has(r.id));
+    baseList = [...baseList, ...missingInit];
+    return baseList.map(r => ({
       ...r,
       versions: Array.isArray(r.versions) && r.versions.length > 0
         ? r.versions.map(v => ({
@@ -1325,7 +1493,10 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [products, setProducts] = useState<Product[]>(() => {
     const list = safeParseJson<Product[]>(`${STORAGE_KEY}_PRODUCTS`, INITIAL_PRODUCTS);
-    return Array.isArray(list) ? list : INITIAL_PRODUCTS;
+    if (!Array.isArray(list)) return INITIAL_PRODUCTS;
+    const existingIds = new Set(list.map(p => p.id));
+    const missingInit = INITIAL_PRODUCTS.filter(p => !existingIds.has(p.id));
+    return [...list, ...missingInit];
   });
 
   const [productions, setProductions] = useState<ProductionRun[]>(() => {
@@ -2091,28 +2262,71 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       })
     );
 
-    // Update customer statistics if customer exists
-    if (orderData.customerId) {
-      setCustomers(prev =>
-        prev.map(c => {
-          if (c.id === orderData.customerId) {
-            const totalOrders = c.totalOrders + 1;
-            const totalSpend = c.totalSpend + totalAmount;
-            let tier = c.tier;
-            if (totalOrders >= 4 || totalSpend >= 500000) tier = 'LOYAL';
-            else if (totalOrders >= 2) tier = 'AKTIF';
-            return {
-              ...c,
-              totalOrders,
-              totalSpend,
-              tier,
-              lastOrderDate: newOrder.date,
-            };
-          }
-          return c;
-        })
+    // Update or auto-create customer in Pelanggan & CRM
+    const cleanPhone = (orderData.customerPhone || '').replace(/[^0-9]/g, '');
+
+    setCustomers(prev => {
+      const existingIdx = prev.findIndex(
+        c =>
+          (orderData.customerId && c.id === orderData.customerId) ||
+          (cleanPhone && (c.phone || '').replace(/[^0-9]/g, '') === cleanPhone)
       );
-    }
+
+      if (existingIdx >= 0) {
+        const c = prev[existingIdx];
+        const totalOrders = (c.totalOrders || 0) + 1;
+        const totalSpend = (Number(c.totalSpend ?? c.totalSpent) || 0) + totalAmount;
+        let tier: CustomerTier = c.tier || 'BARU';
+        if (totalOrders >= 4 || totalSpend >= 500000) tier = 'LOYAL';
+        else if (totalOrders >= 2) tier = 'AKTIF';
+
+        const tags = Array.isArray(c.tags) ? [...c.tags] : [];
+        if (orderData.source === 'WHATSAPP' && !tags.includes('WhatsApp')) {
+          tags.push('WhatsApp');
+        }
+        if (!tags.includes('Langganan')) {
+          tags.push('Langganan');
+        }
+
+        const updated: Customer = {
+          ...c,
+          name: c.name && c.name !== 'Pelanggan' && c.name !== 'Konsumen WhatsApp' ? c.name : (orderData.customerName || c.name),
+          address: c.address || orderData.customerAddress || '',
+          totalOrders,
+          totalSpend,
+          totalSpent: totalSpend,
+          tier,
+          lastOrderDate: newOrder.date,
+          tags,
+        };
+
+        const next = [...prev];
+        next[existingIdx] = updated;
+        return next;
+      } else {
+        // Automatically add new customer from WhatsApp / POS
+        const newId = `cust-${Date.now()}`;
+        const tags = ['Langganan'];
+        if (orderData.source === 'WHATSAPP') {
+          tags.push('WhatsApp');
+        }
+        const newCust: Customer = {
+          id: newId,
+          name: orderData.customerName || 'Pelanggan WhatsApp',
+          phone: orderData.customerPhone || '',
+          email: '',
+          address: orderData.customerAddress || '',
+          totalOrders: 1,
+          totalSpend: totalAmount,
+          totalSpent: totalAmount,
+          tier: 'BARU',
+          lastOrderDate: newOrder.date,
+          tags,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        return [newCust, ...prev];
+      }
+    });
 
     setOrders(prev => [newOrder, ...prev]);
     logAction(

@@ -80,36 +80,61 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch Baileys status
-  const fetchBaileysStatus = async () => {
+  // Fetch Baileys status with robust error handling and AbortController
+  const fetchBaileysStatus = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/baileys/status');
+      const res = await fetch('/api/baileys/status', {
+        signal,
+        headers: { 'Accept': 'application/json' },
+      });
       if (res.ok) {
         const data = await res.json();
-        setBaileysStatus(data);
+        if (data && typeof data === 'object' && data.status) {
+          setBaileysStatus(data);
+        }
       }
-    } catch (e) {
-      console.error('Error fetching Baileys status:', e);
+    } catch (e: any) {
+      // Ignore AbortError on unmount or tab switch
+      if (e?.name === 'AbortError') return;
+      // Graceful fallback without triggering unhandled console error banners
     }
   };
 
-  // Poll Baileys status regularly
+  // Poll Baileys status only when the Baileys tab is active
   useEffect(() => {
-    fetchBaileysStatus();
+    if (activeSubTab !== 'baileys') return;
+
+    const controller = new AbortController();
+    fetchBaileysStatus(controller.signal);
+
     const interval = setInterval(() => {
-      fetchBaileysStatus();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+      fetchBaileysStatus(controller.signal);
+    }, 5000);
+
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [activeSubTab]);
 
   const handleConnectBaileys = async () => {
     setLoadingBaileys(true);
     try {
-      const res = await fetch('/api/baileys/connect', { method: 'POST' });
-      const data = await res.json();
-      setBaileysStatus(data);
+      const res = await fetch('/api/baileys/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBaileysStatus(data);
+      }
     } catch (e: any) {
-      console.error('Failed to connect Baileys:', e);
+      // Graceful error state update
+      setBaileysStatus((prev) => ({
+        ...prev,
+        status: 'DISCONNECTED',
+        lastErrorMessage: 'Server Baileys sedang dipersiapkan. Silakan coba beberapa saat lagi.',
+      }));
     } finally {
       setLoadingBaileys(false);
     }
@@ -118,11 +143,19 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
   const handleDisconnectBaileys = async () => {
     setLoadingBaileys(true);
     try {
-      const res = await fetch('/api/baileys/disconnect', { method: 'POST' });
-      const data = await res.json();
-      setBaileysStatus(data);
+      const res = await fetch('/api/baileys/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBaileysStatus(data);
+      }
     } catch (e: any) {
-      console.error('Failed to disconnect Baileys:', e);
+      setBaileysStatus((prev) => ({
+        ...prev,
+        status: 'DISCONNECTED',
+      }));
     } finally {
       setLoadingBaileys(false);
     }

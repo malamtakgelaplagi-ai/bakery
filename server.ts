@@ -170,7 +170,19 @@ async function startServer() {
   // 8. BAILEYS DIRECT WHATSAPP INTEGRATION (OPEN SOURCE & FREE SCAN QR)
   // =========================================================================
   app.get('/api/baileys/status', (req, res) => {
-    res.json(baileysManager.getStatus());
+    try {
+      res.json(baileysManager.getStatus());
+    } catch (e: any) {
+      res.status(200).json({
+        status: 'DISCONNECTED',
+        qrCodeUrl: null,
+        rawQr: null,
+        connectedPhone: null,
+        connectedName: null,
+        lastConnectedTime: null,
+        lastErrorMessage: e?.message || null,
+      });
+    }
   });
 
   app.post('/api/baileys/connect', async (req, res) => {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
+import { GoogleSyncBanner } from '../common/GoogleSyncBanner';
 import { formatRupiah, formatDateIndo } from '../../utils/formatters';
 import {
   TrendingUp,
@@ -81,6 +82,12 @@ export const FinancialReports: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Live Google Sheets Banner */}
+      <GoogleSyncBanner
+        moduleName="Laba Rugi & Kas"
+        moduleDescription="Laporan profit & loss dihitung secara real-time berdasarkan riwayat pesanan, biaya HPP resep, dan transaksi yang tersimpan di Google Spreadsheet."
+      />
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-stone-200 shadow-sm no-print">
         <div>
