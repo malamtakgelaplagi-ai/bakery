@@ -78,12 +78,67 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Custom Backend URL (for Vercel frontend connecting to Railway/Render/VPS backend)
+  const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
+    return localStorage.getItem('pusaka_backend_api_url') || (import.meta as any).env?.VITE_API_URL || '';
+  });
+  const [showServerConfig, setShowServerConfig] = useState<boolean>(false);
+  const [serverPingStatus, setServerPingStatus] = useState<{ testing: boolean; message: string | null; success?: boolean }>({
+    testing: false,
+    message: null,
+  });
+
+  const getApiUrl = (endpoint: string) => {
+    const base = (customBackendUrl || '').trim().replace(/\/+$/, '');
+    return `${base}${endpoint}`;
+  };
+
+  const handleSaveBackendUrl = (newUrl: string) => {
+    const trimmed = newUrl.trim().replace(/\/+$/, '');
+    setCustomBackendUrl(trimmed);
+    if (trimmed) {
+      localStorage.setItem('pusaka_backend_api_url', trimmed);
+    } else {
+      localStorage.removeItem('pusaka_backend_api_url');
+    }
+  };
+
+  const handleTestBackendPing = async () => {
+    setServerPingStatus({ testing: true, message: null });
+    try {
+      const pingUrl = getApiUrl('/api/health');
+      const res = await fetch(pingUrl, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setServerPingStatus({
+          testing: false,
+          success: true,
+          message: `Terhubung ke Backend! (${data.service || 'Server Aktif'})`,
+        });
+      } else {
+        setServerPingStatus({
+          testing: false,
+          success: false,
+          message: `Gagal: Server merespons HTTP ${res.status}`,
+        });
+      }
+    } catch (err: any) {
+      setServerPingStatus({
+        testing: false,
+        success: false,
+        message: `Koneksi gagal: Pastikan server di Railway/Render sudah online dan URL benar.`,
+      });
+    }
+  };
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch Baileys status with robust error handling and AbortController
   const fetchBaileysStatus = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/baileys/status', {
+      const res = await fetch(getApiUrl('/api/baileys/status'), {
         signal,
         headers: { 'Accept': 'application/json' },
       });
@@ -115,12 +170,12 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
       controller.abort();
       clearInterval(interval);
     };
-  }, [activeSubTab]);
+  }, [activeSubTab, customBackendUrl]);
 
   const handleConnectBaileys = async () => {
     setLoadingBaileys(true);
     try {
-      const res = await fetch('/api/baileys/connect', {
+      const res = await fetch(getApiUrl('/api/baileys/connect'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       });
@@ -133,7 +188,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
       setBaileysStatus((prev) => ({
         ...prev,
         status: 'DISCONNECTED',
-        lastErrorMessage: 'Server Baileys sedang dipersiapkan. Silakan coba beberapa saat lagi.',
+        lastErrorMessage: 'Server Baileys tidak dapat dihubungi. Pastikan server Railway/Render aktif.',
       }));
     } finally {
       setLoadingBaileys(false);
@@ -143,7 +198,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
   const handleDisconnectBaileys = async () => {
     setLoadingBaileys(true);
     try {
-      const res = await fetch('/api/baileys/disconnect', {
+      const res = await fetch(getApiUrl('/api/baileys/disconnect'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       });
@@ -167,7 +222,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
     setTestSending(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/baileys/send-test', {
+      const res = await fetch(getApiUrl('/api/baileys/send-test'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: testPhone, message: testMsg }),
@@ -416,6 +471,85 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
                 <span>{baileysStatus.lastErrorMessage}</span>
               </div>
             )}
+
+            {/* Backend Server Configuration for Railway / Vercel Split */}
+            <div className="bg-stone-50 rounded-xl border border-stone-200 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${customBackendUrl ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                  <span className="text-xs font-bold text-stone-800">
+                    Target Server Backend: {customBackendUrl ? (
+                      <span className="text-purple-700 font-mono font-normal">{customBackendUrl}</span>
+                    ) : (
+                      <span className="text-stone-500 font-normal">Lokal / Preview Terpadu (Relative)</span>
+                    )}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowServerConfig(!showServerConfig)}
+                  className="text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white border border-stone-200 px-2.5 py-1 rounded-lg hover:bg-stone-100 flex items-center gap-1.5 shadow-sm transition"
+                >
+                  <Settings2 className="w-3.5 h-3.5 text-stone-500" />
+                  {showServerConfig ? 'Tutup Pengaturan Server' : 'Atur URL Server Railway/Render'}
+                </button>
+              </div>
+
+              {showServerConfig && (
+                <div className="pt-2 border-t border-stone-200 space-y-3">
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    💡 <strong>Tips Vercel + Railway:</strong> Jika Frontend di-deploy di Vercel dan Backend Baileys di-deploy di Railway / Render, masukkan URL publik Railway Anda di sini (contoh: <code className="bg-stone-200 px-1 py-0.5 rounded text-stone-800 font-mono">https://pusaka-backend-production.up.railway.app</code>).
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      value={customBackendUrl}
+                      onChange={(e) => setCustomBackendUrl(e.target.value)}
+                      placeholder="https://pusaka-backend-production.up.railway.app"
+                      className="flex-1 px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-mono text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveBackendUrl(customBackendUrl)}
+                        className="px-3 py-1.5 bg-stone-900 text-white rounded-lg text-xs font-semibold hover:bg-stone-800 transition shadow-sm"
+                      >
+                        Simpan URL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTestBackendPing}
+                        disabled={serverPingStatus.testing}
+                        className="px-3 py-1.5 bg-white border border-stone-300 text-stone-700 rounded-lg text-xs font-semibold hover:bg-stone-50 transition shadow-sm flex items-center gap-1.5"
+                      >
+                        {serverPingStatus.testing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-600" />}
+                        Test Koneksi
+                      </button>
+                      {customBackendUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleSaveBackendUrl('')}
+                          className="px-2.5 py-1.5 text-stone-500 hover:text-red-600 rounded-lg text-xs"
+                          title="Reset ke default"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {serverPingStatus.message && (
+                    <div className={`p-2 rounded-lg text-xs flex items-center gap-2 ${
+                      serverPingStatus.success
+                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                    }`}>
+                      {serverPingStatus.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+                      <span>{serverPingStatus.message}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Main Interactive Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -6,6 +6,7 @@ import {
   Recipe,
   Product,
   Customer,
+  CustomerTier,
   WasteRecord,
   ProductionRun,
   BusinessProfile,
@@ -568,7 +569,7 @@ export async function loadAllDataFromGoogleSheets(
             totalSpend,
             lastOrderDate: new Date().toISOString().split('T')[0],
             notes,
-            tier: totalSpend > 500000 ? 'VIP' : totalSpend > 200000 ? 'REGULAR' : 'NEW',
+            tier: (totalSpend > 500000 ? 'LOYAL' : totalSpend > 200000 ? 'AKTIF' : 'BARU') as CustomerTier,
           };
         });
     }
@@ -585,11 +586,12 @@ export async function loadAllDataFromGoogleSheets(
         .map((r, idx) => ({
           id: `exp-sheet-${idx + 1}`,
           date: String(r[0] || new Date().toISOString().split('T')[0]),
-          category: String(r[1] || 'Operasional Toko'),
+          category: (String(r[1] || 'Operasional Toko') as any),
           description: String(r[2] || 'Biaya'),
           amount: Number(r[3]) || 0,
           paymentMethod: String(r[4] || 'CASH') as any,
-          recipient: r[5] ? String(r[5]) : undefined,
+          recordedBy: 'Admin (Google Sheets)',
+          createdAt: new Date().toISOString(),
         }));
     }
   } catch (e) {
@@ -604,9 +606,11 @@ export async function loadAllDataFromGoogleSheets(
         .filter((r) => r[2] && String(r[2]).trim() !== '')
         .map((r, idx) => ({
           id: `wst-sheet-${idx + 1}`,
+          itemId: `wst-item-${idx + 1}`,
           date: String(r[0] || new Date().toISOString().split('T')[0]),
           type: (String(r[1] || 'PRODUK_JADI') as any),
           itemName: String(r[2] || 'Item'),
+          qty: Number(r[3]) || 1,
           quantity: Number(r[3]) || 1,
           unit: String(r[4] || 'pcs'),
           lostCost: Number(r[5]) || 0,
@@ -874,7 +878,7 @@ export async function syncAllDataToGoogleSheets(
     exp.description,
     exp.amount,
     exp.paymentMethod || 'CASH',
-    exp.recipient || '-',
+    (exp as any).recipient || exp.recordedBy || '-',
   ]);
 
   // 10. Settings & Profile Sheet
@@ -884,7 +888,7 @@ export async function syncAllDataToGoogleSheets(
     ['Nama Usaha', profile?.name || 'PUSAKA Bakery', new Date().toISOString()],
     ['Alamat Toko', profile?.address || '-', new Date().toISOString()],
     ['No. WhatsApp', profile?.phone || '-', new Date().toISOString()],
-    ['Rekening Bank / QRIS', `${profile?.bankName || ''} - ${profile?.bankAccount || ''}`, new Date().toISOString()],
+    ['Rekening Bank / QRIS', profile?.bankAccountInfo || '-', new Date().toISOString()],
     ['Sync Engine Status', 'REALTIME_GOOGLE_SHEETS_MASTER', new Date().toISOString()],
   ];
 
