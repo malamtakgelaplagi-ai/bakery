@@ -88,16 +88,25 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
     message: null,
   });
 
+  const normalizeBackendUrl = (url: string) => {
+    let trimmed = (url || '').trim().replace(/\/+$/, '');
+    if (!trimmed) return '';
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      trimmed = `https://${trimmed}`;
+    }
+    return trimmed;
+  };
+
   const getApiUrl = (endpoint: string) => {
-    const base = (customBackendUrl || '').trim().replace(/\/+$/, '');
+    const base = normalizeBackendUrl(customBackendUrl);
     return `${base}${endpoint}`;
   };
 
   const handleSaveBackendUrl = (newUrl: string) => {
-    const trimmed = newUrl.trim().replace(/\/+$/, '');
-    setCustomBackendUrl(trimmed);
-    if (trimmed) {
-      localStorage.setItem('pusaka_backend_api_url', trimmed);
+    const formatted = normalizeBackendUrl(newUrl);
+    setCustomBackendUrl(formatted);
+    if (formatted) {
+      localStorage.setItem('pusaka_backend_api_url', formatted);
     } else {
       localStorage.removeItem('pusaka_backend_api_url');
     }
@@ -149,31 +158,34 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
         }
       }
     } catch (e: any) {
-      // Ignore AbortError on unmount or tab switch
       if (e?.name === 'AbortError') return;
-      // Graceful fallback without triggering unhandled console error banners
+      // Network or CORS error
     }
   };
 
-  // Poll Baileys status only when the Baileys tab is active
+  // Poll Baileys status dynamically (faster when connecting or awaiting QR)
   useEffect(() => {
     if (activeSubTab !== 'baileys') return;
 
     const controller = new AbortController();
     fetchBaileysStatus(controller.signal);
 
+    // Fast polling (2s) while waiting for QR or connecting, slower (8s) when connected
+    const pollIntervalTime = baileysStatus.status === 'CONNECTING' || baileysStatus.status === 'SCAN_QR' ? 2000 : 8000;
+
     const interval = setInterval(() => {
       fetchBaileysStatus(controller.signal);
-    }, 5000);
+    }, pollIntervalTime);
 
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [activeSubTab, customBackendUrl]);
+  }, [activeSubTab, customBackendUrl, baileysStatus.status]);
 
   const handleConnectBaileys = async () => {
     setLoadingBaileys(true);
+    setBaileysStatus((prev) => ({ ...prev, status: 'CONNECTING', lastErrorMessage: null }));
     try {
       const res = await fetch(getApiUrl('/api/baileys/connect'), {
         method: 'POST',
@@ -182,13 +194,26 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
       if (res.ok) {
         const data = await res.json();
         setBaileysStatus(data);
+        // Trigger quick follow-up checks to catch the QR generation instantly
+        setTimeout(() => fetchBaileysStatus(), 1000);
+        setTimeout(() => fetchBaileysStatus(), 2500);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setBaileysStatus((prev) => ({
+          ...prev,
+          status: 'DISCONNECTED',
+          lastErrorMessage: errData.error || `Server merespons status ${res.status}. Pastikan deploy backend selesai.`,
+        }));
       }
     } catch (e: any) {
-      // Graceful error state update
+      // Diagnostic error message for user
+      const isCorsOrNetwork = e?.message?.includes('Failed to fetch') || e?.name === 'TypeError';
       setBaileysStatus((prev) => ({
         ...prev,
         status: 'DISCONNECTED',
-        lastErrorMessage: 'Server Baileys tidak dapat dihubungi. Pastikan server Railway/Render aktif.',
+        lastErrorMessage: isCorsOrNetwork
+          ? `Koneksi ke backend diblokir (CORS / Network Error). Jika Anda baru menambahkan URL Railway, pastikan backend di Railway sudah di-redeploy dengan kode terbaru yang memiliki konfigurasi CORS.`
+          : (e?.message || 'Gagal terhubung ke backend Baileys.'),
       }));
     } finally {
       setLoadingBaileys(false);
