@@ -365,7 +365,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`=======================================================`);
     console.log(` PUSAKA Bakery Full-Stack Server Running on Port ${PORT}`);
     console.log(` - REST API: http://localhost:${PORT}/api/products`);
@@ -374,6 +374,18 @@ async function startServer() {
     console.log(` - WhatsApp Webhook: http://localhost:${PORT}/api/webhook/whatsapp`);
     console.log(`=======================================================`);
   });
+
+  // Graceful shutdown on SIGTERM / SIGINT
+  const handleShutdown = (signal: string) => {
+    console.log(`Received ${signal}. Shutting down server gracefully...`);
+    server.close(() => {
+      console.log('HTTP server closed successfully.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }
 
 startServer().catch((err) => {
