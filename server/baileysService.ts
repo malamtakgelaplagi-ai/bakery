@@ -1,9 +1,5 @@
-import makeWASocket, {
-  DisconnectReason,
-  useMultiFileAuthState,
-  WASocket,
-  proto,
-} from '@whiskeysockets/baileys';
+import * as BaileysPkg from '@whiskeysockets/baileys';
+import type { WASocket, proto } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import QRCode from 'qrcode';
 import fs from 'fs';
@@ -12,6 +8,41 @@ import { Boom } from '@hapi/boom';
 import { serverStore } from './dataStore';
 import { processBotMessage, showMainMenu, normalizePhoneNumber } from '../src/services/whatsappBotService';
 import { WhatsAppMessageItem, WhatsAppSession } from '../src/types';
+
+// Resilient resolver for Baileys functions across CJS/ESM bundling
+function getMakeWASocket(): any {
+  const pkg: any = BaileysPkg;
+  if (typeof pkg.default === 'function') return pkg.default;
+  if (typeof pkg.makeWASocket === 'function') return pkg.makeWASocket;
+  if (typeof pkg === 'function') return pkg;
+  if (pkg.default && typeof pkg.default.default === 'function') return pkg.default.default;
+  if (pkg.default && typeof pkg.default.makeWASocket === 'function') return pkg.default.makeWASocket;
+  return pkg.makeWASocket || pkg.default || pkg;
+}
+
+function getUseMultiFileAuthState(): any {
+  const pkg: any = BaileysPkg;
+  return (
+    pkg.useMultiFileAuthState ||
+    pkg.default?.useMultiFileAuthState ||
+    (pkg.default?.default && pkg.default.default.useMultiFileAuthState)
+  );
+}
+
+const DisconnectReasonMap: Record<string, number> = {
+  loggedOut: 401,
+  timedOut: 408,
+  connectionLost: 408,
+  connectionClosed: 428,
+  connectionReplaced: 440,
+  badSession: 500,
+  restartRequired: 515,
+};
+
+function getDisconnectReason(): any {
+  const pkg: any = BaileysPkg;
+  return pkg.DisconnectReason || pkg.default?.DisconnectReason || DisconnectReasonMap;
+}
 
 export type BaileysConnectionState = 'DISCONNECTED' | 'SCAN_QR' | 'CONNECTING' | 'CONNECTED';
 
@@ -71,9 +102,13 @@ class BaileysManager {
     this.lastErrorMessage = null;
 
     try {
-      const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+      const useAuthState = getUseMultiFileAuthState();
+      const createSocket = getMakeWASocket();
+      const disconnectReasons = getDisconnectReason();
 
-      this.sock = makeWASocket({
+      const { state, saveCreds } = await useAuthState(AUTH_DIR);
+
+      this.sock = createSocket({
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: 'silent' }),
@@ -82,7 +117,7 @@ class BaileysManager {
 
       this.sock.ev.on('creds.update', saveCreds);
 
-      this.sock.ev.on('connection.update', async (update) => {
+      this.sock.ev.on('connection.update', async (update: any) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
@@ -104,7 +139,7 @@ class BaileysManager {
 
         if (connection === 'close') {
           const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-          const shouldReconnect = reason !== DisconnectReason.loggedOut;
+          const shouldReconnect = reason !== disconnectReasons.loggedOut;
           
           this.connectedPhone = null;
           this.connectedName = null;

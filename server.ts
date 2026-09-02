@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { serverStore } from './server/dataStore';
 import { baileysManager } from './server/baileysService';
@@ -359,9 +360,19 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    const indexPath = path.join(distPath, 'index.html');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.json({
+          status: 'ok',
+          service: 'PUSAKA Bakery Backend API',
+          message: 'Backend server is active and running',
+          timestamp: new Date().toISOString(),
+        });
+      }
     });
   }
 
