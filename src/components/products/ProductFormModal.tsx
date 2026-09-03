@@ -29,6 +29,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [minStockFinishedGoods, setMinStockFinishedGoods] = useState(5);
   const [shelfLifeDays, setShelfLifeDays] = useState(4);
   const [description, setDescription] = useState('');
+  const [image, setImage] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,6 +46,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setMinStockFinishedGoods(productToEdit.minStockFinishedGoods);
       setShelfLifeDays(productToEdit.shelfLifeDays || 4);
       setDescription(productToEdit.description || '');
+      setImage(productToEdit.image || '');
     } else {
       setName('');
       setSku(`BP-${Math.floor(10 + Math.random() * 90)}`);
@@ -57,6 +59,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setMinStockFinishedGoods(4);
       setShelfLifeDays(4);
       setDescription('');
+      setImage('/products/bolu-pisang-original.jpg');
     }
   }, [isOpen, productToEdit, recipes]);
 
@@ -92,6 +95,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       status: 'active' as const,
       description,
       shelfLifeDays: Number(shelfLifeDays),
+      image: image.trim() || undefined,
     };
 
     if (productToEdit) {
@@ -269,6 +273,32 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none font-bold"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-stone-800 mb-1">URL Foto Produk (Web & Etalase Konsumen)</label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="url"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                placeholder="https://images.unsplash.com/... atau URL gambar"
+                className="flex-1 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none"
+              />
+              {image && (
+                <img
+                  src={image}
+                  alt="Preview"
+                  className="w-9 h-9 object-cover rounded-lg border border-stone-300 shrink-0"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+            <span className="text-[10px] text-stone-400 block mt-0.5">
+              Foto ini akan ditampilkan langsung di etalase web konsumen dan katalog produk.
+            </span>
           </div>
 
           <div>

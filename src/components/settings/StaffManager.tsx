@@ -537,7 +537,7 @@ export const StaffManager: React.FC = () => {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Contoh: H. Suherman, Putri Rahayu, Chef Rendy"
+                    placeholder="Contoh: Muhammad Ridla, Lilis Mulyani, Azzalea"
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none font-medium"
                   />
                 </div>
@@ -601,7 +601,7 @@ export const StaffManager: React.FC = () => {
                     type="text"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="081234567890"
+                    placeholder="082115181105"
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono"
                   />
                 </div>

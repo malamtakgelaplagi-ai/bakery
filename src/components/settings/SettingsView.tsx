@@ -218,7 +218,7 @@ export const SettingsView: React.FC = () => {
                 type="text"
                 value={form.adminWhatsAppPhone || form.phone}
                 onChange={(e) => setForm({ ...form, adminWhatsAppPhone: e.target.value })}
-                placeholder="081234567890"
+                placeholder="081297767814"
                 className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none font-mono text-xs bg-white"
               />
             </div>

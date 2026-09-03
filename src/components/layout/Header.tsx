@@ -13,6 +13,8 @@ import {
   Menu,
   X,
   FileSpreadsheet,
+  LogOut,
+  Eye,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -22,6 +24,8 @@ interface HeaderProps {
   onOpenQuickProduction?: () => void;
   onToggleMobileMenu?: () => void;
   isMobileMenuOpen?: boolean;
+  onViewCustomerStore?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,6 +35,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenQuickProduction,
   onToggleMobileMenu,
   isMobileMenuOpen,
+  onViewCustomerStore,
+  onLogout,
 }) => {
   const {
     businessProfile,
@@ -316,6 +322,29 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span className="hidden xs:inline">+ Kasir</span>
                 <span className="xs:hidden">+ POS</span>
+              </button>
+            )}
+
+            {/* Switch to Customer Storefront Button */}
+            {onViewCustomerStore && (
+              <button
+                onClick={onViewCustomerStore}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 transition"
+                title="Beralih ke Halaman Depan Web Konsumen"
+              >
+                <Store className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Web Konsumen</span>
+              </button>
+            )}
+
+            {/* Logout Management Session Button */}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="p-1.5 sm:p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-md transition"
+                title="Keluar / Logout dari Dashboard Manajemen"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             )}
           </div>

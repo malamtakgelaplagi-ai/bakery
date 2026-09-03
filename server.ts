@@ -352,6 +352,8 @@ async function startServer() {
   // =========================================================================
   // VITE & STATIC SERVING
   // =========================================================================
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

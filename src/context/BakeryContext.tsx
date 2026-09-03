@@ -78,13 +78,13 @@ const INITIAL_UNITS: Unit[] = [
 const INITIAL_PROFILE: BusinessProfile = {
   name: 'PUSAKA Bakery & Bolu',
   tagline: 'Artisan Bolu Pisang Premium & Cake Nusantara',
-  ownerName: 'H. Suherman & Tim',
-  phone: '081234567890',
+  ownerName: 'Muhammad Ridla',
+  phone: '082115181105',
   email: 'pusaka.bakery@gmail.com',
-  address: 'Jl. R.E. Martadinata No. 88, Citarum',
+  address: 'Jl. Rancabolang Indah II no 15',
   city: 'Bandung, Jawa Barat',
   operatingHours: '07.00 - 20.00 WIB',
-  googleMapsUrl: 'https://maps.google.com/?q=Jl.+R.E.+Martadinata+No.+88+Bandung',
+  googleMapsUrl: 'https://maps.google.com/?q=Jl.+Rancabolang+Indah+II+no+15+Bandung',
   currency: 'IDR',
   invoicePrefix: 'INV-PSK',
   productionBatchPrefix: 'BATCH-PSK',
@@ -95,7 +95,8 @@ const INITIAL_PROFILE: BusinessProfile = {
   whatsappInvoiceTemplate: '',
   whatsappFollowUpTemplate: '',
   whatsappBotEnabled: true,
-  adminWhatsAppPhone: '081234567890',
+  adminWhatsAppPhone: '081297767814',
+  adminWhatsapp: '081297767814',
   whatsappGatewayProvider: 'FONNTE',
 };
 
@@ -534,7 +535,7 @@ const INITIAL_RECIPES: Recipe[] = [
         totalHppPerUnit: 28378.5,
         notes: 'Uji coba batch pertama',
         createdAt: '2026-08-01',
-        createdBy: 'Chef Rendy',
+        createdBy: 'Chef Nani Kartini & Lilis Mulyani',
       },
       {
         id: 'ver-1-1',
@@ -570,7 +571,7 @@ const INITIAL_RECIPES: Recipe[] = [
         totalHppPerUnit: 28378.5,
         notes: 'Versi aktif komersial, tekstur empuk berserat lembut tahan 4 hari di suhu ruang',
         createdAt: '2026-08-20',
-        createdBy: 'Chef Rendy & Tim',
+        createdBy: 'Chef Nani Kartini & Lilis Mulyani',
       },
     ],
   },
@@ -613,7 +614,7 @@ const INITIAL_RECIPES: Recipe[] = [
         totalDirectCost: 5800,
         totalHppPerUnit: 32921.5,
         createdAt: '2026-08-10',
-        createdBy: 'Chef Rendy',
+        createdBy: 'Chef Nani Kartini & Lilis Mulyani',
       }
     ]
   },
@@ -654,7 +655,7 @@ const INITIAL_RECIPES: Recipe[] = [
         totalDirectCost: 5800,
         totalHppPerUnit: 32356.5,
         createdAt: '2026-08-15',
-        createdBy: 'Chef Rendy',
+        createdBy: 'Chef Nani Kartini & Lilis Mulyani',
       }
     ]
   },
@@ -709,66 +710,69 @@ const INITIAL_RECIPES: Recipe[] = [
   }
 ];
 
-// Initial Finished Products Catalog
+// Initial Finished Products Catalog (Berdasarkan Google Drive resmi PUSAKA)
 const INITIAL_PRODUCTS: Product[] = [
   {
     id: 'prod-1',
-    sku: 'BP-M',
-    name: 'Bolu Pisang Medium Original',
+    sku: 'BP-ORIG',
+    name: 'Bolu Pisang Original',
     category: 'Bolu Pisang',
-    sizeSpec: 'Ø20 cm (Medium)',
-    bakedWeightGram: 900,
+    sizeSpec: 'Loyang 22x10 cm (±650 gr)',
+    bakedWeightGram: 650,
     recipeId: 'rec-1',
     recipeVersionId: 'ver-1-1',
     sellingPrice: 55000,
     baseHpp: 28378.5,
-    grossMarginPercent: 48.4, // (55000 - 28378.5) / 55000 = 48.4%
-    stockFinishedGoods: 8,
+    grossMarginPercent: 48.4,
+    stockFinishedGoods: 14,
     minStockFinishedGoods: 5,
     status: 'active',
-    description: 'Bolu pisang klasik lembut dengan aroma rempah kayu manis dan pisang raja ambon segar.',
+    description: 'Bolu pisang klasik lembut khas PUSAKA dengan aroma rempah kayu manis dan pisang raja matang pohon alami.',
     shelfLifeDays: 4,
+    image: '/products/bolu-pisang-original.jpg',
   },
   {
     id: 'prod-2',
-    sku: 'BP-KEJU',
-    name: 'Bolu Pisang Keju Spesial',
+    sku: 'BP-COK',
+    name: 'Bolu Pisang Coklat',
     category: 'Bolu Pisang',
-    sizeSpec: 'Ø20 cm (Medium)',
-    bakedWeightGram: 975,
-    recipeId: 'rec-2',
-    recipeVersionId: 'ver-2-0',
-    sellingPrice: 65000,
-    baseHpp: 32921.5,
-    grossMarginPercent: 49.3,
-    stockFinishedGoods: 6,
+    sizeSpec: 'Loyang 22x10 cm (±700 gr)',
+    bakedWeightGram: 700,
+    recipeId: 'rec-3',
+    recipeVersionId: 'ver-3-0',
+    sellingPrice: 60000,
+    baseHpp: 32356.5,
+    grossMarginPercent: 46.1,
+    stockFinishedGoods: 10,
     minStockFinishedGoods: 4,
     status: 'active',
-    description: 'Kombinasi manis legit pisang dan gurihnya limpahan keju cheddar parut emas.',
+    description: 'Sensasi lelehan cokelat dark compound premium berpadu lembutnya bolu pisang manis legit khas PUSAKA.',
     shelfLifeDays: 4,
+    image: '/products/bolu-pisang-coklat.jpg',
   },
   {
     id: 'prod-3',
-    sku: 'BP-COK',
-    name: 'Bolu Pisang Choco Melt',
-    category: 'Bolu Pisang',
-    sizeSpec: 'Ø20 cm (Medium)',
-    bakedWeightGram: 975,
-    recipeId: 'rec-3',
-    recipeVersionId: 'ver-3-0',
-    sellingPrice: 65000,
-    baseHpp: 32356.5,
-    grossMarginPercent: 50.2,
-    stockFinishedGoods: 5,
+    sku: 'BJ-ORIG',
+    name: 'Bolu Jadul Original',
+    category: 'Bolu Tradisional',
+    sizeSpec: 'Loyang Tulban Ø20 cm (±650 gr)',
+    bakedWeightGram: 650,
+    recipeId: 'rec-4',
+    recipeVersionId: 'ver-4-0',
+    sellingPrice: 50000,
+    baseHpp: 27500.0,
+    grossMarginPercent: 45.0,
+    stockFinishedGoods: 12,
     minStockFinishedGoods: 4,
     status: 'active',
-    description: 'Sensasi lelehan cokelat dark premium di setiap gigitan bolu pisang lembut.',
+    description: 'Bolu jadoel klasik super lembut dan empuk dengan aroma butter margarin harum tempo dulu yang manis pas.',
     shelfLifeDays: 4,
+    image: '/products/bolu-jadul-original.jpg',
   },
   {
     id: 'prod-4',
-    sku: 'BL-JAD-01',
-    name: 'Bolu Jadoel',
+    sku: 'BJ-MARM',
+    name: 'Bolu Jadul Marmer',
     category: 'Bolu Tradisional',
     sizeSpec: 'Loyang Tulban Ø20 cm (±650 gr)',
     bakedWeightGram: 650,
@@ -777,11 +781,31 @@ const INITIAL_PRODUCTS: Product[] = [
     sellingPrice: 55000,
     baseHpp: 28805.55,
     grossMarginPercent: 47.6,
-    stockFinishedGoods: 10,
+    stockFinishedGoods: 15,
     minStockFinishedGoods: 4,
     status: 'active',
-    description: 'Bolu Jadoel klasik super lembut & moist dengan aroma margarin harum dan aksen motif marmer cokelat otentik.',
+    description: 'Bolu jadoel marmer legendaris super lembut & moist dengan corak spiral cokelat otentik yang harum semerbak.',
     shelfLifeDays: 4,
+    image: '/products/bolu-jadul-marmer.jpg',
+  },
+  {
+    id: 'prod-5',
+    sku: 'BJ-COK',
+    name: 'Bolu Jadul Coklat',
+    category: 'Bolu Tradisional',
+    sizeSpec: 'Loyang Tulban Ø20 cm (±650 gr)',
+    bakedWeightGram: 650,
+    recipeId: 'rec-4',
+    recipeVersionId: 'ver-4-0',
+    sellingPrice: 55000,
+    baseHpp: 29200.0,
+    grossMarginPercent: 46.9,
+    stockFinishedGoods: 8,
+    minStockFinishedGoods: 4,
+    status: 'active',
+    description: 'Bolu jadoel coklat istimewa berpadu cokelat nikmat dan lembut di lidah, aroma harum semerbak teman minum teh & kopi.',
+    shelfLifeDays: 4,
+    image: '/products/bolu-jadul-coklat.jpg',
   },
 ];
 
@@ -903,7 +927,7 @@ const INITIAL_ORDERS: Order[] = [
     fulfillmentStatus: 'SELESAI',
     deliveryType: 'PICKUP',
     notes: 'Diambil jam 08.30 pagi untuk jualan sarapan di kantin.',
-    createdBy: 'Kasir Sinta',
+    createdBy: 'Azzalea',
     createdAt: '2026-08-23T08:15:00',
   },
   {
@@ -951,7 +975,7 @@ const INITIAL_ORDERS: Order[] = [
     courierName: 'Gosend Instant',
     trackingNumber: 'GK-8823199',
     notes: 'Kirim sore jam 15.00 hangat untuk pengajian keluarga',
-    createdBy: 'Kasir Sinta',
+    createdBy: 'Azzalea',
     createdAt: '2026-08-23T11:20:00',
   },
   {
@@ -988,7 +1012,7 @@ const INITIAL_ORDERS: Order[] = [
     fulfillmentStatus: 'DIPROSES',
     deliveryType: 'PICKUP',
     notes: 'Ambil jam 17.00 sepulang kantor. Sisa Rp 60.000 bayar tunai di kasir.',
-    createdBy: 'Admin Putri',
+    createdBy: 'Lilis Mulyani',
     createdAt: '2026-08-23T13:45:00',
   },
 ];
@@ -1030,7 +1054,7 @@ const INITIAL_PRODUCTIONS: ProductionRun[] = [
     unitProductionCost: 27568.5,
     isStockDeducted: true,
     isFinishedStockAdded: true,
-    operatorName: 'Chef Rendy',
+    operatorName: 'Chef Nani Kartini & Lilis Mulyani',
     notes: 'Batch pagi 5 pcs matang sempurna, warna golden brown merata.',
     timeline: [
       { status: 'DRAFT', timestamp: '2026-08-23T06:00:00', note: 'Rencana produksi dibuat' },
@@ -1071,7 +1095,7 @@ const INITIAL_PRODUCTIONS: ProductionRun[] = [
     unitProductionCost: 32921.5,
     isStockDeducted: true,
     isFinishedStockAdded: false,
-    operatorName: 'Agus Baking',
+    operatorName: 'Izz',
     notes: 'Sedang di oven 2, estimasi matang 15 menit lagi.',
     timeline: [
       { status: 'DRAFT', timestamp: '2026-08-23T13:00:00' },
@@ -1104,7 +1128,7 @@ const INITIAL_PURCHASES: Purchase[] = [
     totalAmount: 300000,
     paymentStatus: 'LUNAS',
     notes: 'Pisang fresh baru petik, kualitas super legit',
-    recordedBy: 'Admin Putri',
+    recordedBy: 'Lilis Mulyani',
     createdAt: '2026-08-22T09:00:00',
   },
   {
@@ -1128,7 +1152,7 @@ const INITIAL_PURCHASES: Purchase[] = [
     totalAmount: 280000,
     paymentStatus: 'LUNAS',
     notes: 'Pengiriman pagi jam 07.00',
-    recordedBy: 'Admin Putri',
+    recordedBy: 'Lilis Mulyani',
     createdAt: '2026-08-22T09:30:00',
   },
 ];
@@ -1142,7 +1166,7 @@ const INITIAL_EXPENSES: Expense[] = [
     amount: 440000,
     paymentMethod: 'CASH',
     receiptNumber: 'NOTA-GAS-88',
-    recordedBy: 'Admin Putri',
+    recordedBy: 'Lilis Mulyani',
     createdAt: '2026-08-20T10:00:00',
   },
   {
@@ -1153,7 +1177,7 @@ const INITIAL_EXPENSES: Expense[] = [
     amount: 350000,
     paymentMethod: 'TRANSFER_BCA',
     receiptNumber: 'FB-META-9921',
-    recordedBy: 'Owner Suherman',
+    recordedBy: 'Muhammad Ridla',
     createdAt: '2026-08-18T14:30:00',
   },
   {
@@ -1164,7 +1188,7 @@ const INITIAL_EXPENSES: Expense[] = [
     amount: 320000,
     paymentMethod: 'TRANSFER_BCA',
     receiptNumber: 'INDI-8821',
-    recordedBy: 'Admin Putri',
+    recordedBy: 'Lilis Mulyani',
     createdAt: '2026-08-15T09:00:00',
   },
 ];
@@ -1180,7 +1204,7 @@ const INITIAL_WASTES: WasteRecord[] = [
     unit: 'g',
     reason: 'Pisang terlalu benyek busuk karena tertindih',
     estimatedLossRp: 10000,
-    loggedBy: 'Agus Baking',
+    loggedBy: 'Izz',
   },
   {
     id: 'wst-2',
@@ -1192,7 +1216,7 @@ const INITIAL_WASTES: WasteRecord[] = [
     unit: 'pcs',
     reason: 'Bagian atas bolu sedikit gosong akibat suhu oven tidak stabil',
     estimatedLossRp: 28378.5,
-    loggedBy: 'Chef Rendy',
+    loggedBy: 'Chef Nani Kartini & Lilis Mulyani',
   },
 ];
 
@@ -1200,8 +1224,8 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'log-1',
     timestamp: '2026-08-23T08:10:00',
-    userId: 'u-rendy',
-    userName: 'Chef Rendy',
+    userId: 'u-produksi',
+    userName: 'Chef Nani Kartini & Lilis Mulyani',
     role: 'PRODUKSI',
     action: 'PRODUKSI SELESAI',
     details: 'Menyelesaikan Batch BATCH-PSK-20260823-01 (+5 Bolu Pisang Medium)',
@@ -1210,8 +1234,8 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'log-2',
     timestamp: '2026-08-23T08:15:00',
-    userId: 'u-sinta',
-    userName: 'Kasir Sinta',
+    userId: 'u-kasir',
+    userName: 'Azzalea',
     role: 'KASIR',
     action: 'ORDER SELESAI & LUNAS',
     details: 'Menerbitkan Invoice #INV-PSK-20260823-001 senilai Rp 310.000',
@@ -1222,31 +1246,22 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
 const INITIAL_OUTLETS: Outlet[] = [
   {
     id: 'out-1',
-    name: 'PUSAKA Central Kitchen & Store (R.E. Martadinata)',
+    name: 'PUSAKA Bakery Central Kitchen & Store',
     code: 'PSK-01',
-    address: 'Jl. R.E. Martadinata No. 88, Bandung',
+    address: 'Jl. Rancabolang Indah II no 15',
     city: 'Bandung',
-    phone: '081234567890',
+    phone: '082115181105',
     isMain: true,
-  },
-  {
-    id: 'out-2',
-    name: 'PUSAKA Pop-up Booth (Stasiun Bandung Hall)',
-    code: 'PSK-02',
-    address: 'Area Keberangkatan Kereta Cepat, Stasiun Hall',
-    city: 'Bandung',
-    phone: '081299887700',
-    isMain: false,
   },
 ];
 
 export const INITIAL_USERS: UserAccount[] = [
   {
     id: 'user-owner',
-    name: 'H. Suherman',
+    name: 'Muhammad Ridla',
     title: 'Owner & Pemilik Usaha',
     email: 'owner@pusakabakery.id',
-    phone: '081234567890',
+    phone: '082115181105',
     role: 'OWNER',
     status: 'active',
     pin: '1234',
@@ -1254,10 +1269,10 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: 'user-admin',
-    name: 'Putri Rahayu',
+    name: 'Lilis Mulyani',
     title: 'Admin Operasional & Purchasing',
     email: 'admin@pusakabakery.id',
-    phone: '081298765432',
+    phone: '081297767814',
     role: 'ADMIN',
     status: 'active',
     pin: '2345',
@@ -1265,10 +1280,10 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: 'user-produksi',
-    name: 'Chef Rendy',
-    title: 'Head Baker & Dapur Produksi',
+    name: 'Chef Nani Kartini & Lilis Mulyani',
+    title: 'Head Baker / Produksi',
     email: 'produksi@pusakabakery.id',
-    phone: '081311223344',
+    phone: '082115181105',
     role: 'PRODUKSI',
     status: 'active',
     pin: '3456',
@@ -1276,10 +1291,10 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: 'user-kasir',
-    name: 'Sinta Dewi',
+    name: 'Azzalea',
     title: 'Kasir Frontliner & POS Outlet',
     email: 'kasir@pusakabakery.id',
-    phone: '081399887766',
+    phone: '082115181105',
     role: 'KASIR',
     status: 'active',
     pin: '4567',
@@ -1287,10 +1302,10 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: 'user-supervisor',
-    name: 'Agus Supervisor',
+    name: 'Izz',
     title: 'Supervisor Shift & Logistik',
     email: 'supervisor@pusakabakery.id',
-    phone: '081255667788',
+    phone: '082115181105',
     role: 'SUPERVISOR',
     status: 'active',
     pin: '5678',
@@ -1432,7 +1447,7 @@ interface BakeryContextType {
 
 const BakeryContext = createContext<BakeryContextType | null>(null);
 
-const STORAGE_KEY = 'PUSAKA_BAKERY_SAAS_STATE_V1';
+const STORAGE_KEY = 'PUSAKA_BAKERY_SAAS_STATE_V2';
 
 const safeParseJson = <T,>(key: string, fallback: T): T => {
   try {
@@ -1450,7 +1465,15 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Load initial state from LocalStorage if available with normalization
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile>(() => {
     const data = safeParseJson<BusinessProfile>(`${STORAGE_KEY}_PROFILE`, INITIAL_PROFILE);
-    return { ...INITIAL_PROFILE, ...data };
+    const merged = { ...INITIAL_PROFILE, ...data };
+    // Always enforce authoritative business profile data
+    merged.address = 'Jl. Rancabolang Indah II no 15';
+    merged.googleMapsUrl = 'https://maps.google.com/?q=Jl.+Rancabolang+Indah+II+no+15+Bandung';
+    merged.ownerName = 'Muhammad Ridla';
+    merged.phone = '082115181105';
+    merged.adminWhatsAppPhone = '081297767814';
+    merged.adminWhatsapp = '081297767814';
+    return merged;
   });
 
   const [ingredients, setIngredients] = useState<Ingredient[]>(() => {
@@ -1492,11 +1515,26 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
-    const list = safeParseJson<Product[]>(`${STORAGE_KEY}_PRODUCTS`, INITIAL_PRODUCTS);
-    if (!Array.isArray(list)) return INITIAL_PRODUCTS;
+    const list = safeParseJson<Product[]>(`${STORAGE_KEY}_PRODUCTS_GDRIVE_V1`, null);
+    if (!Array.isArray(list) || list.length === 0) {
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_PRODUCTS_GDRIVE_V1`, JSON.stringify(INITIAL_PRODUCTS));
+        localStorage.setItem(`${STORAGE_KEY}_PRODUCTS`, JSON.stringify(INITIAL_PRODUCTS));
+      } catch {
+        // ignore
+      }
+      return INITIAL_PRODUCTS;
+    }
     const existingIds = new Set(list.map(p => p.id));
     const missingInit = INITIAL_PRODUCTS.filter(p => !existingIds.has(p.id));
-    return [...list, ...missingInit];
+    const combined = [...list, ...missingInit];
+    return combined.map(p => {
+      const matched = INITIAL_PRODUCTS.find(init => init.id === p.id || init.sku === p.sku);
+      if (matched && (!p.image || p.image.includes('unsplash.com'))) {
+        return { ...p, image: matched.image, name: matched.name, description: matched.description };
+      }
+      return p;
+    });
   });
 
   const [productions, setProductions] = useState<ProductionRun[]>(() => {
@@ -1542,10 +1580,21 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return Array.isArray(list) ? list : INITIAL_AUDIT_LOGS;
   });
 
-  // Staff & User Accounts State
+  // Staff & User Accounts State (Exclusively the 5 authorized staff)
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const list = safeParseJson<UserAccount[]>(`${STORAGE_KEY}_USERS`, INITIAL_USERS);
     if (!Array.isArray(list) || list.length === 0) return INITIAL_USERS;
+    const hasStaleOrInvalidUsers = list.some(u =>
+      u.name.includes('Suherman') ||
+      u.name.includes('Putri') ||
+      u.name.includes('Rendy') ||
+      u.name.includes('Sinta') ||
+      u.name.includes('Agus')
+    );
+    if (hasStaleOrInvalidUsers || list.length !== 5) {
+      localStorage.setItem(`${STORAGE_KEY}_USERS`, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
+    }
     return list;
   });
 
@@ -1591,7 +1640,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const INITIAL_WA_SESSIONS: WhatsAppSession[] = [
     {
       id: 'sess-demo-sarah',
-      customerPhone: '081298765432',
+      customerPhone: '082115181105',
       customerName: 'Bunda Sarah (Demo Konsumen)',
       currentStep: 'MAIN_MENU',
       isHumanHandled: false,
@@ -1614,7 +1663,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return list;
   });
 
-  const [activeWhatsAppPhone, setActiveWhatsAppPhone] = useState<string>('081298765432');
+  const [activeWhatsAppPhone, setActiveWhatsAppPhone] = useState<string>('082115181105');
 
   // Listen to Google Auth State on Mount
   useEffect(() => {
@@ -1650,6 +1699,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem(`${STORAGE_KEY}_PURCHASES`, JSON.stringify(purchases));
     localStorage.setItem(`${STORAGE_KEY}_RECIPES`, JSON.stringify(recipes));
     localStorage.setItem(`${STORAGE_KEY}_PRODUCTS`, JSON.stringify(products));
+    localStorage.setItem(`${STORAGE_KEY}_PRODUCTS_GDRIVE_V1`, JSON.stringify(products));
     localStorage.setItem(`${STORAGE_KEY}_PRODUCTIONS`, JSON.stringify(productions));
     localStorage.setItem(`${STORAGE_KEY}_CUSTOMERS`, JSON.stringify(customers));
     localStorage.setItem(`${STORAGE_KEY}_ORDERS`, JSON.stringify(orders));
@@ -3071,7 +3121,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     text: string,
     payload?: string | null
   ): Promise<{ reply: WhatsAppMessageItem; orderCreated?: Order }> => {
-    const cleanPhone = phone.trim() || '081298765432';
+    const cleanPhone = phone.trim() || '082115181105';
     let currentSession = whatsappSessions.find(s => s.customerPhone === cleanPhone);
 
     if (!currentSession) {
@@ -3136,7 +3186,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const resetWhatsAppSession = (phone: string) => {
-    const cleanPhone = phone.trim() || '081298765432';
+    const cleanPhone = phone.trim() || '082115181105';
     const freshSession: WhatsAppSession = {
       id: `sess-${Date.now()}`,
       customerPhone: cleanPhone,
@@ -3154,7 +3204,7 @@ export const BakeryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const toggleWhatsAppAdminHandoff = (phone: string, isHandled: boolean) => {
-    const cleanPhone = phone.trim() || '081298765432';
+    const cleanPhone = phone.trim() || '082115181105';
     setWhatsappSessions(prev =>
       prev.map(s => {
         if (s.customerPhone === cleanPhone) {

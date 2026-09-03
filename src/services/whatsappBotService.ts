@@ -483,14 +483,16 @@ export function processBotMessage(
       session.isHumanHandled = true;
       session.currentStep = 'HUMAN_HANDOFF';
 
-      const adminPhone = normalizePhoneNumber(businessProfile.adminWhatsapp || businessProfile.adminWhatsAppPhone || businessProfile.phone || '081234567890');
-      const directWaLink = `https://wa.me/${adminPhone}?text=${encodeURIComponent(`Halo Admin ${businessProfile.name}, saya ${session.customerName || 'Pelanggan'} ingin bertanya langsung.`)}`;
+      // Sesuai mandat: pada menu WhatsApp apabila konsumen memilih no 4 gunakan no admin : 081297767814, selain itu tidak ada
+      const adminRawPhone = '081297767814';
+      const adminPhone = normalizePhoneNumber(adminRawPhone);
+      const directWaLink = `https://wa.me/${adminPhone}?text=${encodeURIComponent(`Halo Admin ${businessProfile.name} (Lilis Mulyani), saya ${session.customerName || 'Pelanggan'} ingin bertanya langsung.`)}`;
 
       const replyText =
-        `👨‍💼 *CHAT DENGAN ADMIN*\n\n` +
-        `Baik Kak ${session.customerName || ''}, percakapan ini sudah kami teruskan ke Admin *${businessProfile.name}* (tanpa bot).\n\n` +
-        `Silakan tuliskan pertanyaan atau kebutuhan Kakak di sini. Admin kami akan segera membalas.\n\n` +
-        `Atau klik link WhatsApp langsung:\n👉 ${directWaLink}\n\n` +
+        `👨‍💼 *CHAT DENGAN ADMIN (Lilis Mulyani)*\n\n` +
+        `Baik Kak ${session.customerName || ''}, percakapan ini dialihkan langsung ke Admin *${businessProfile.name}* (tanpa bot).\n\n` +
+        `📱 *Nomor WhatsApp Admin:* 081297767814\n\n` +
+        `Silakan tuliskan pesan atau pertanyaan Kakak di sini, atau klik link WhatsApp langsung:\n👉 ${directWaLink}\n\n` +
         `_Ketik *0* kapan saja jika ingin kembali ke menu otomatis._`;
 
       const replyMessage: WhatsAppMessageItem = {

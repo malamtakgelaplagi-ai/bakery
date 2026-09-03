@@ -16,13 +16,72 @@ import { GoogleSheetsManager } from './components/sheets/GoogleSheetsManager';
 import { WhatsAppBotManager } from './components/whatsapp/WhatsAppBotManager';
 import { NewOrderModal } from './components/pos/NewOrderModal';
 import { NewProductionModal } from './components/production/NewProductionModal';
+import { CustomerHome } from './components/customer/CustomerHome';
+import { ManagementLoginModal } from './components/customer/ManagementLoginModal';
 
 const AppContent: React.FC = () => {
+  // View mode: 'customer' (Etalase Konsumen & Profil) vs 'management' (Dashboard Bisnis)
+  const [viewMode, setViewMode] = useState<'customer' | 'management'>('customer');
+  const [isManagementAuthenticated, setIsManagementAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('PUSAKA_MGMT_AUTH') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
   const [isQuickProductionOpen, setIsQuickProductionOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const handleSuccessfulLogin = () => {
+    setIsManagementAuthenticated(true);
+    try {
+      sessionStorage.setItem('PUSAKA_MGMT_AUTH', 'true');
+    } catch (e) {
+      console.warn('Could not set sessionStorage', e);
+    }
+    setViewMode('management');
+  };
+
+  const handleLogout = () => {
+    setIsManagementAuthenticated(false);
+    try {
+      sessionStorage.removeItem('PUSAKA_MGMT_AUTH');
+    } catch (e) {
+      console.warn('Could not remove sessionStorage', e);
+    }
+    setViewMode('customer');
+  };
+
+  // 1. If currently in Customer View Mode, render the public Storefront & Profile
+  if (viewMode === 'customer') {
+    return (
+      <>
+        <CustomerHome
+          onOpenLogin={() => setIsLoginModalOpen(true)}
+          onNavigateToDashboard={() => {
+            if (isManagementAuthenticated) {
+              setViewMode('management');
+            } else {
+              setIsLoginModalOpen(true);
+            }
+          }}
+          isManagementAuthenticated={isManagementAuthenticated}
+        />
+
+        <ManagementLoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
+          onSuccessLogin={handleSuccessfulLogin}
+        />
+      </>
+    );
+  }
+
+  // 2. Otherwise render the Management Dashboard
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -94,6 +153,8 @@ const AppContent: React.FC = () => {
         onOpenQuickProduction={() => setIsQuickProductionOpen(true)}
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         isMobileMenuOpen={isMobileMenuOpen}
+        onViewCustomerStore={() => setViewMode('customer')}
+        onLogout={handleLogout}
       />
 
       <div className="flex flex-1 overflow-hidden">

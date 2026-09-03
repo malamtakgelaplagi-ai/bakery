@@ -49,7 +49,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
 
   const [activeSubTab, setActiveSubTab] = useState<'baileys' | 'simulator' | 'config' | 'sessions' | 'webhook'>('baileys');
   const [inputText, setInputText] = useState('');
-  const [selectedPhone, setSelectedPhone] = useState(activeWhatsAppPhone || '081298765432');
+  const [selectedPhone, setSelectedPhone] = useState(activeWhatsAppPhone || '082115181105');
   const [newCustomerName, setNewCustomerName] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
   const [lastCreatedOrderInvoice, setLastCreatedOrderInvoice] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
     lastErrorMessage: null,
   });
   const [loadingBaileys, setLoadingBaileys] = useState(false);
-  const [testPhone, setTestPhone] = useState('081234567890');
+  const [testPhone, setTestPhone] = useState('082115181105');
   const [testMsg, setTestMsg] = useState('Halo! Ini pesan tes otomatis dari PUSAKA Bakery.');
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -750,7 +750,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
                         type="text"
                         value={testPhone}
                         onChange={(e) => setTestPhone(e.target.value)}
-                        placeholder="Contoh: 081298765432"
+                        placeholder="Contoh: 082115181105"
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                       />
                     </div>
@@ -1072,7 +1072,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
                       setSelectedPhone(e.target.value);
                       setActiveWhatsAppPhone(e.target.value);
                     }}
-                    placeholder="081298765432"
+                    placeholder="082115181105"
                     className="flex-1 px-3 py-2 border border-stone-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                   />
                   <button
@@ -1310,7 +1310,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
                     value={businessProfile.adminWhatsAppPhone || businessProfile.phone}
                     onChange={(e) => updateBusinessProfile({ adminWhatsAppPhone: e.target.value })}
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg text-xs font-mono"
-                    placeholder="081234567890"
+                    placeholder="081297767814"
                   />
                   <p className="text-[10px] text-stone-500 mt-1">
                     Nomor ini akan menerima pesan langsung saat konsumen memilih Menu 4.
