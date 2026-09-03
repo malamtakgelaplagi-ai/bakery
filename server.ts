@@ -316,17 +316,26 @@ async function startServer() {
         !fonnteToken.includes('YOUR_')
       ) {
         try {
+          const buttonList = (result.replyMessage?.buttons || [])
+            .map((b) => b.label)
+            .join(', ');
+
+          const fonntePayload: any = {
+            target: cleanSender,
+            message: result.replyText,
+            countryCode: '62',
+          };
+          if (buttonList) {
+            fonntePayload.button = buttonList;
+          }
+
           const response = await fetch('https://api.fonnte.com/send', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               Authorization: fonnteToken.trim(),
             },
-            body: JSON.stringify({
-              target: cleanSender,
-              message: result.replyText,
-              countryCode: '62',
-            }),
+            body: JSON.stringify(fonntePayload),
           });
           const fonnteData = await response.json();
           console.log('[Fonnte API Response]:', fonnteData);

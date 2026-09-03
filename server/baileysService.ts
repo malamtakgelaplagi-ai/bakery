@@ -187,23 +187,37 @@ class BaileysManager {
           const from = msg.key.remoteJid;
           if (!from || from.includes('@broadcast') || from.includes('@newsletter')) continue;
 
-          // Extract message text
+          // Extract message text and interactive button responses
+          let buttonPayload: string | null = null;
+          if (msg.message.buttonsResponseMessage?.selectedButtonId) {
+            buttonPayload = msg.message.buttonsResponseMessage.selectedButtonId;
+          } else if (msg.message.templateButtonReplyMessage?.selectedId) {
+            buttonPayload = msg.message.templateButtonReplyMessage.selectedId;
+          } else if (msg.message.listResponseMessage?.singleSelectReply?.selectedRowId) {
+            buttonPayload = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
+          } else if ((msg.message as any).interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson) {
+            try {
+              const params = JSON.parse((msg.message as any).interactiveResponseMessage.nativeFlowResponseMessage.paramsJson);
+              buttonPayload = params.id || params.payload || null;
+            } catch {
+              // ignore
+            }
+          }
+
           const incomingText =
             msg.message.conversation ||
             msg.message.extendedTextMessage?.text ||
             msg.message.buttonsResponseMessage?.selectedDisplayText ||
-            msg.message.buttonsResponseMessage?.selectedButtonId ||
-            msg.message.templateButtonReplyMessage?.selectedId ||
-            msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            buttonPayload ||
             '';
 
-          if (!incomingText && !msg.message.imageMessage?.caption) continue;
+          if (!incomingText && !msg.message.imageMessage?.caption && !buttonPayload) continue;
           const text = incomingText || msg.message.imageMessage?.caption || '';
 
           const senderNumber = from.replace(/[^0-9]/g, '');
           const customerPushName = msg.pushName || 'Pelanggan';
 
-          await this.handleIncomingUserMessage(from, senderNumber, customerPushName, text);
+          await this.handleIncomingUserMessage(from, senderNumber, customerPushName, text, buttonPayload);
         }
       });
 
@@ -221,7 +235,8 @@ class BaileysManager {
     remoteJid: string,
     senderNumber: string,
     customerName: string,
-    text: string
+    text: string,
+    buttonPayload: string | null = null
   ) {
     try {
       const cleanSender = normalizePhoneNumber(senderNumber);
@@ -248,7 +263,7 @@ class BaileysManager {
       const userMsg: WhatsAppMessageItem = {
         id: `msg-in-${Date.now()}`,
         sender: 'user',
-        text,
+        text: text || (buttonPayload ? `[Pilih: ${buttonPayload}]` : ''),
         timestamp: timeNow,
       };
       session.messages.push(userMsg);
@@ -256,7 +271,7 @@ class BaileysManager {
 
       // 2. Check if currently handled by human admin
       if (session.isHumanHandled) {
-        const cleanInput = text.trim().toLowerCase();
+        const cleanInput = (buttonPayload || text).trim().toLowerCase();
         if (cleanInput === '0' || cleanInput === 'menu' || cleanInput === 'kembali' || cleanInput === 'menu utama') {
           session.isHumanHandled = false;
           session.currentStep = 'MAIN_MENU';
@@ -268,7 +283,7 @@ class BaileysManager {
       }
 
       // 3. Process Deterministic 4-Menu State Machine
-      const result = processBotMessage(session, text, null, activeProducts, profile);
+      const result = processBotMessage(session, text, buttonPayload, activeProducts, profile);
 
       // 4. Create Order on SaaS Backend if confirmed
       if (result.orderToCreate) {
@@ -285,11 +300,33 @@ class BaileysManager {
       // Save session
       serverStore.saveWhatsAppSession(result.session);
 
-      // 5. Send WhatsApp Message back to user directly via Baileys socket
+      // 5. Send WhatsApp Message back to user directly via Baileys socket with Hybrid Buttons
       if (result.shouldReply !== false && result.replyText && this.sock) {
-        await this.sock.sendMessage(remoteJid, {
-          text: result.replyText,
-        });
+        if (result.replyMessage?.buttons && result.replyMessage.buttons.length > 0) {
+          try {
+            // Send with interactive buttons for WhatsApp clients that support it
+            const buttons = result.replyMessage.buttons.map((b) => ({
+              buttonId: b.payload,
+              buttonText: { displayText: b.label },
+              type: 1,
+            }));
+            await this.sock.sendMessage(remoteJid, {
+              text: result.replyText,
+              footer: result.replyMessage.footer || `${profile.name} • Mode Hybrid`,
+              buttons,
+              headerType: 1,
+            } as any);
+          } catch (btnErr) {
+            // Safe fallback to standard text message if the WhatsApp client or socket rejects buttons
+            await this.sock.sendMessage(remoteJid, {
+              text: result.replyText,
+            });
+          }
+        } else {
+          await this.sock.sendMessage(remoteJid, {
+            text: result.replyText,
+          });
+        }
       }
     } catch (msgErr) {
       console.error('Error handling message in Baileys:', msgErr);

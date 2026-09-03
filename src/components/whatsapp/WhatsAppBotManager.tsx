@@ -295,6 +295,19 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
   };
 
   const handleButtonClick = (payload: string, label: string) => {
+    if (payload === 'maps') {
+      const mapsUrl = businessProfile.googleMapsUrl && businessProfile.googleMapsUrl.trim().length > 5
+        ? businessProfile.googleMapsUrl.trim()
+        : 'https://maps.google.com/?q=Jl.+Rancabolang+Indah+II+no+15+Bandung';
+      window.open(mapsUrl, '_blank');
+      handleSendMessage(label, 'maps');
+      return;
+    }
+    if (payload === 'wa_admin_link') {
+      window.open('https://wa.me/6281297767814', '_blank');
+      handleSendMessage(label, 'wa_admin_link');
+      return;
+    }
     handleSendMessage(label, payload);
   };
 
@@ -867,7 +880,7 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
                     </div>
                     <div className="text-[11px] text-emerald-100 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
-                      {currentSession.isHumanHandled ? '👨‍💼 Chat Admin Langsung' : 'Bot Otomatis (Menu Aktif)'}
+                      {currentSession.isHumanHandled ? '👨‍💼 Chat Admin Langsung' : '⚡ Bot Hybrid (Tap & Ketik)'}
                     </div>
                   </div>
                 </div>
@@ -885,10 +898,10 @@ export const WhatsAppBotManager: React.FC<{ onNavigateToPos?: () => void }> = ({
 
               {/* Chat Messages Body */}
               <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
-                {/* Notice Badge */}
+                {/* Hybrid Notice Badge */}
                 <div className="text-center my-1">
-                  <span className="bg-amber-100/95 text-amber-900 text-[10px] font-medium px-3 py-1 rounded-md shadow-xs border border-amber-200 inline-block max-w-xs">
-                    🔒 Chat terenkripsi. PUSAKA Bakery melayani order otomatis dari data SaaS.
+                  <span className="bg-emerald-50 text-emerald-950 text-[10px] font-semibold px-3 py-1 rounded-md shadow-xs border border-emerald-300 inline-block max-w-sm">
+                    ✨ <b>Mode Hybrid Aktif:</b> Konsumen bisa tap tombol pilihan langsung atau mengetik angka/teks 1–4.
                   </span>
                 </div>
 

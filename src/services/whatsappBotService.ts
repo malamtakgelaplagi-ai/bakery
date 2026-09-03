@@ -88,14 +88,14 @@ export function showMainMenu(session: WhatsAppSession, businessProfile: Business
   const replyText =
     `🍌 *${businessProfile.name.toUpperCase()}*\n` +
     `${businessProfile.tagline ? `${businessProfile.tagline}\n\n` : '\n'}` +
-    `Selamat datang Kak ${session.customerName || 'Pelanggan'}.\n\n` +
+    `Selamat datang Kak ${session.customerName || 'Pelanggan'}!\n\n` +
     `Silakan pilih layanan kami:\n\n` +
     `1. 🛒 *Pesan Bolu*\n` +
     `2. 📍 *Lokasi Toko/Pabrik*\n` +
     `3. 🍰 *Jenis Varian Bolu*\n` +
     `4. 👨‍💼 *Chat dengan Admin*\n\n` +
-    `Balas angka *1–4* untuk memilih menu.\n` +
-    `Ketik *0* kapan saja untuk kembali ke menu ini.`;
+    `💡 *Mode Hybrid:* Anda bisa langsung *tap tombol menu di bawah*, atau balas dengan angka *1–4* / ketik pilihan Anda.\n` +
+    `_Ketik *0* kapan saja untuk kembali ke menu ini._`;
 
   const replyMessage: WhatsAppMessageItem = {
     id: `msg-${Date.now()}`,
@@ -103,9 +103,9 @@ export function showMainMenu(session: WhatsAppSession, businessProfile: Business
     text: replyText,
     timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
     header: `🍌 ${businessProfile.name}`,
-    footer: 'PUSAKA Bakery Automation',
+    footer: 'Mode Hybrid: Tap Tombol / Ketik 1-4',
     buttons: [
-      { id: 'btn-1', label: '1️⃣ Pesan Bolu', payload: '1' },
+      { id: 'btn-1', label: '1️⃣ 🛒 Pesan Bolu', payload: '1' },
       { id: 'btn-2', label: '2️⃣ 📍 Lokasi Toko', payload: '2' },
       { id: 'btn-3', label: '3️⃣ 🍰 Varian Bolu', payload: '3' },
       { id: 'btn-4', label: '4️⃣ 👨‍💼 Chat Admin', payload: '4' },
@@ -142,6 +142,10 @@ export function showOrderProducts(session: WhatsAppSession, products: Product[])
         sender: 'bot',
         text: replyText,
         timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        buttons: [
+          { id: 'btn-4', label: '👨‍💼 Chat Admin', payload: '4' },
+          { id: 'btn-0', label: '🔙 Menu Utama', payload: '0' },
+        ],
       },
     };
   }
@@ -149,14 +153,17 @@ export function showOrderProducts(session: WhatsAppSession, products: Product[])
   const replyText =
     `🛒 *PESAN BOLU PUSAKA*\n\n` +
     buildProductOrderList(activeProducts) +
-    `\n\nSilakan balas *nomor produk* yang ingin dipesan (contoh: *1* atau *2*).\n\n` +
+    `\n\n💡 *Mode Hybrid:* Tap langsung *tombol produk di bawah*, atau balas nomor produk (*1* - *${activeProducts.length}*).\n\n` +
     `0. Kembali ke Menu Utama`;
 
-  const buttons = activeProducts.slice(0, 3).map((p, idx) => ({
-    id: `btn-prod-${p.id}`,
-    label: `${idx + 1}. ${p.name.length > 16 ? p.name.substring(0, 16) + '...' : p.name}`,
-    payload: `${idx + 1}`,
-  }));
+  const buttons = [
+    ...activeProducts.map((p, idx) => ({
+      id: `btn-prod-${p.id}`,
+      label: `${idx + 1}️⃣ ${p.name.length > 20 ? p.name.substring(0, 18) + '..' : p.name}`,
+      payload: `${idx + 1}`,
+    })),
+    { id: 'btn-0', label: '🔙 0. Kembali ke Menu Utama', payload: '0' },
+  ];
 
   return {
     session,
@@ -168,6 +175,8 @@ export function showOrderProducts(session: WhatsAppSession, products: Product[])
       sender: 'bot',
       text: replyText,
       timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      header: '🛒 Pilih Varian Bolu',
+      footer: 'Tap Produk atau Ketik Nomor',
       buttons,
     },
   };
@@ -178,9 +187,10 @@ export function showOrderProducts(session: WhatsAppSession, products: Product[])
  */
 export function showBusinessLocation(session: WhatsAppSession, profile: BusinessProfile): ProcessBotMessageResult {
   session.currentStep = 'MAIN_MENU';
-  const maps = profile.googleMapsUrl
-    ? `\n\n🗺️ *Google Maps / Petunjuk Arah:*\n${profile.googleMapsUrl}`
-    : `\n\n🗺️ *Google Maps / Petunjuk Arah:*\n${getMapsUrl(profile)}`;
+  const mapsUrl = profile.googleMapsUrl && profile.googleMapsUrl.trim().length > 5
+    ? profile.googleMapsUrl.trim()
+    : getMapsUrl(profile);
+  const maps = `\n\n🗺️ *Google Maps / Petunjuk Arah:*\n${mapsUrl}`;
 
   const coords = profile.latitude && profile.longitude ? `\n📌 Koordinat: ${profile.latitude}, ${profile.longitude}` : '';
 
@@ -191,7 +201,7 @@ export function showBusinessLocation(session: WhatsAppSession, profile: Business
     `📞 *Hotline / Kontak:*\n${profile.phone || profile.adminWhatsAppPhone || '-'}` +
     coords +
     maps +
-    `\n\nKetik *1* untuk Pesan Bolu, atau ketik *0* untuk kembali ke Menu Utama.`;
+    `\n\n💡 *Mode Hybrid:* Tap tombol di bawah atau balas *1* untuk Pesan Bolu / *0* untuk Menu Utama.`;
 
   const replyMessage: WhatsAppMessageItem = {
     id: `msg-${Date.now()}`,
@@ -199,9 +209,11 @@ export function showBusinessLocation(session: WhatsAppSession, profile: Business
     text: replyText,
     timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
     header: `📍 Lokasi ${profile.name}`,
+    footer: 'PUSAKA Bakery & Bolu',
     buttons: [
-      { id: 'btn-1', label: '1️⃣ Pesan Bolu', payload: '1' },
-      { id: 'btn-0', label: '🔙 Menu Utama', payload: '0' },
+      { id: 'btn-1', label: '1️⃣ 🛒 Pesan Bolu Sekarang', payload: '1' },
+      { id: 'btn-maps', label: '🗺️ Buka Google Maps', payload: 'maps' },
+      { id: 'btn-0', label: '🔙 Kembali ke Menu Utama', payload: '0' },
     ],
   };
 
@@ -243,17 +255,19 @@ export function showProductVariants(session: WhatsAppSession, products: Product[
   const replyText =
     `🍰 *JENIS VARIAN BOLU PUSAKA*\n\n` +
     content +
-    `\n\nUntuk memesan, balas angka *1* (Pesan Bolu).\n` +
-    `Ketik *0* untuk kembali ke Menu Utama.`;
+    `\n\n💡 *Mode Hybrid:* Tap tombol *Pesan Bolu Sekarang* di bawah, atau balas angka *1* untuk mulai memesan.\n` +
+    `_Ketik *0* untuk kembali ke Menu Utama._`;
 
   const replyMessage: WhatsAppMessageItem = {
     id: `msg-${Date.now()}`,
     sender: 'bot',
     text: replyText,
     timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+    header: '🍰 Varian Bolu PUSAKA',
+    footer: 'Bahan Alami Pilihan & Fresh Baked',
     buttons: [
-      { id: 'btn-1', label: '1️⃣ Pesan Bolu Sekarang', payload: '1' },
-      { id: 'btn-0', label: '🔙 Menu Utama', payload: '0' },
+      { id: 'btn-1', label: '1️⃣ 🛒 Pesan Bolu Sekarang', payload: '1' },
+      { id: 'btn-0', label: '🔙 Kembali ke Menu Utama', payload: '0' },
     ],
   };
 
@@ -273,11 +287,13 @@ export function askDeliveryDate(session: WhatsAppSession): ProcessBotMessageResu
   const isPickup = session.deliveryType === 'PICKUP';
   const replyText = isPickup
     ? `🏪 *Jadwal Pengambilan di Toko*\n\n` +
-      `Kapan perkiraan pesanan akan diambil di toko?\n\n` +
-      `Contoh: *Hari ini jam 15.00* atau *Besok pagi jam 09.00*`
+      `Kapan perkiraan pesanan akan diambil di toko (Jl. Rancabolang Indah II no 15)?\n\n` +
+      `💡 *Mode Hybrid:* Tap tombol jadwal instan di bawah, atau ketik waktu yang Anda inginkan (contoh: *Hari ini jam 15.00* atau *Besok pagi jam 09.00*).\n\n` +
+      `Ketik *0* untuk kembali ke Menu Utama.`
     : `🚚 *Jadwal Pengiriman Kurir*\n\n` +
-      `Kapan pesanan ingin diantarkan?\n\n` +
-      `Contoh: *Hari ini jam 14.00* atau *Besok jam 10.00*`;
+      `Kapan pesanan ingin diantarkan ke alamat tujuan?\n\n` +
+      `💡 *Mode Hybrid:* Tap tombol jadwal instan di bawah, atau ketik waktu pengantaran Anda (contoh: *Hari ini jam 14.00* atau *Besok jam 10.00*).\n\n` +
+      `Ketik *0* untuk kembali ke Menu Utama.`;
 
   return {
     session,
@@ -289,6 +305,14 @@ export function askDeliveryDate(session: WhatsAppSession): ProcessBotMessageResu
       sender: 'bot',
       text: replyText,
       timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      header: isPickup ? '🏪 Jadwal Pengambilan Toko' : '🚚 Jadwal Pengiriman Kurir',
+      footer: 'Pilih Waktu Pengiriman/Pengambilan',
+      buttons: [
+        { id: 'time-1', label: '⚡ Hari ini secepatnya', payload: 'Hari ini secepatnya' },
+        { id: 'time-2', label: '🌅 Besok Pagi (09.00 WIB)', payload: 'Besok pagi jam 09.00 WIB' },
+        { id: 'time-3', label: '🌇 Besok Sore (15.00 WIB)', payload: 'Besok sore jam 15.00 WIB' },
+        { id: 'btn-0', label: '🔙 Menu Utama', payload: '0' },
+      ],
     },
   };
 }
@@ -320,9 +344,7 @@ export function showOrderConfirmation(session: WhatsAppSession): ProcessBotMessa
     `📍 *Alamat/Tujuan:* ${session.customerAddress || session.deliveryAddress || '-'}\n` +
     `⏰ *Waktu:* ${session.deliveryDateText || 'Sesuai jam operasional'}\n\n` +
     `Apakah data pesanan di atas sudah benar?\n\n` +
-    `1. ✅ *Ya, Buat Pesanan*\n` +
-    `2. ❌ *Batalkan Pesanan*\n\n` +
-    `Balas *1* (atau *YA*) untuk konfirmasi, atau *2* (atau *BATAL*) untuk membatalkan.`;
+    `💡 *Mode Hybrid:* Tap tombol konfirmasi di bawah atau balas *1* (YA) / *2* (BATAL).`;
 
   const replyMessage: WhatsAppMessageItem = {
     id: `msg-${Date.now()}`,
@@ -330,10 +352,10 @@ export function showOrderConfirmation(session: WhatsAppSession): ProcessBotMessa
     text: replyText,
     timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
     header: '📝 Konfirmasi Pesanan',
-    footer: 'Pesanan akan tercatat di sistem SaaS',
+    footer: 'Pesanan akan langsung tercatat di sistem kasir',
     buttons: [
-      { id: 'btn-conf-1', label: '1. ✅ Ya, Konfirmasi', payload: '1' },
-      { id: 'btn-conf-2', label: '2. ❌ Batalkan', payload: '2' },
+      { id: 'btn-conf-1', label: '✅ 1. Ya, Konfirmasi Pesanan', payload: '1' },
+      { id: 'btn-conf-2', label: '❌ 2. Batalkan Pesanan', payload: '2' },
     ],
   };
 
@@ -408,9 +430,22 @@ export function processBotMessage(
   businessProfile: BusinessProfile
 ): ProcessBotMessageResult {
   const activeProducts = (products || []).filter((p) => p.status === 'active');
-  const input = String(buttonPayload || message || '')
+  let rawInput = String(buttonPayload || message || '')
     .trim()
     .toLowerCase();
+
+  // Normalize interactive button payloads so tap and text behave identically
+  if (rawInput === 'btn-1') rawInput = '1';
+  if (rawInput === 'btn-2') rawInput = '2';
+  if (rawInput === 'btn-3') rawInput = '3';
+  if (rawInput === 'btn-4') rawInput = '4';
+  if (rawInput === 'btn-0' || rawInput === 'btn-back-0') rawInput = '0';
+  if (rawInput.startsWith('qty-')) rawInput = rawInput.replace('qty-', '');
+  if (rawInput.startsWith('del-')) rawInput = rawInput.replace('del-', '');
+  if (rawInput === 'btn-conf-1') rawInput = '1';
+  if (rawInput === 'btn-conf-2') rawInput = '2';
+
+  const input = rawInput;
 
   // ==========================================
   // 1. ADMIN SEDANG MENANGANI (HUMAN HANDOFF)
@@ -435,7 +470,7 @@ export function processBotMessage(
   // ==========================================
   // 2. GLOBAL COMMAND: KEMBALI KE MENU UTAMA
   // ==========================================
-  if (input === 'menu' || input === '0' || input === 'kembali' || input === 'menu utama' || input === 'home' || input === 'batal') {
+  if (input === 'menu' || input === '0' || input === 'kembali' || input === 'menu utama' || input === 'home') {
     session.currentStep = 'MAIN_MENU';
     clearOrderSession(session);
     return showMainMenu(session, businessProfile);
@@ -478,7 +513,9 @@ export function processBotMessage(
       input === 'chat admin' ||
       input === 'cs' ||
       input === 'hubungi admin' ||
-      input === 'menu_4_admin'
+      input === 'menu_4_admin' ||
+      input === 'wa_admin_link' ||
+      input === 'btn-wa-link'
     ) {
       session.isHumanHandled = true;
       session.currentStep = 'HUMAN_HANDOFF';
@@ -492,7 +529,8 @@ export function processBotMessage(
         `👨‍💼 *CHAT DENGAN ADMIN (Lilis Mulyani)*\n\n` +
         `Baik Kak ${session.customerName || ''}, percakapan ini dialihkan langsung ke Admin *${businessProfile.name}* (tanpa bot).\n\n` +
         `📱 *Nomor WhatsApp Admin:* 081297767814\n\n` +
-        `Silakan tuliskan pesan atau pertanyaan Kakak di sini, atau klik link WhatsApp langsung:\n👉 ${directWaLink}\n\n` +
+        `💡 *Mode Hybrid:* Anda bisa langsung menuliskan pesan di sini, tap tombol chat admin di bawah, atau tap kembali ke menu otomatis.\n\n` +
+        `👉 Link WA: ${directWaLink}\n\n` +
         `_Ketik *0* kapan saja jika ingin kembali ke menu otomatis._`;
 
       const replyMessage: WhatsAppMessageItem = {
@@ -500,8 +538,12 @@ export function processBotMessage(
         sender: 'bot',
         text: replyText,
         timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        header: `👨‍💼 Handoff Admin (Zero AI)`,
-        buttons: [{ id: 'btn-0', label: '🔙 Kembali ke Menu Utama', payload: '0' }],
+        header: `👨‍💼 Handoff Admin (081297767814)`,
+        footer: 'Admin: Lilis Mulyani',
+        buttons: [
+          { id: 'btn-wa-link', label: '💬 Buka Chat WA Admin', payload: 'wa_admin_link' },
+          { id: 'btn-0', label: '🔙 Kembali ke Menu Otomatis', payload: '0' },
+        ],
       };
 
       return {
@@ -581,7 +623,7 @@ export function processBotMessage(
       `🍰 *${product.name}*\n` +
       `💰 Harga: *${formatRupiah(product.sellingPrice)}* / box${stockMsg}\n\n` +
       `Berapa box yang ingin dipesan?\n\n` +
-      `Silakan ketik jumlahnya (contoh: *1*, *2*, *3*, dst).\n\n` +
+      `💡 *Mode Hybrid:* Tap tombol jumlah instan di bawah, atau ketik langsung angka jumlah box (contoh: *1*, *2*, *5*, dst).\n\n` +
       `0. Kembali ke Menu Utama`;
 
     const replyMessage: WhatsAppMessageItem = {
@@ -590,11 +632,13 @@ export function processBotMessage(
       text: replyText,
       timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       header: `🍰 ${product.name}`,
+      footer: 'Pilih Jumlah Box',
       buttons: [
-        { id: 'qty-1', label: '1 Box', payload: '1' },
-        { id: 'qty-2', label: '2 Box', payload: '2' },
-        { id: 'qty-3', label: '3 Box', payload: '3' },
-        { id: 'qty-5', label: '5 Box', payload: '5' },
+        { id: 'qty-1', label: '1️⃣ 1 Box', payload: '1' },
+        { id: 'qty-2', label: '2️⃣ 2 Box', payload: '2' },
+        { id: 'qty-3', label: '3️⃣ 3 Box', payload: '3' },
+        { id: 'qty-5', label: '5️⃣ 5 Box', payload: '5' },
+        { id: 'btn-0', label: '🔙 Menu Utama', payload: '0' },
       ],
     };
 
@@ -671,8 +715,8 @@ export function processBotMessage(
       `Bagaimana pesanan ingin diterima?\n\n` +
       `1. 🚚 *Diantar Kurir (Delivery)*\n` +
       `2. 🏪 *Ambil Sendiri di Toko/Pabrik (Pickup)*\n\n` +
-      `Balas *1* atau *2*.\n` +
-      `0. Kembali ke Menu Utama`;
+      `💡 *Mode Hybrid:* Tap pilihan di bawah atau balas dengan angka *1* / *2*.\n` +
+      `_Ketik *0* untuk kembali ke Menu Utama._`;
 
     const replyMessage: WhatsAppMessageItem = {
       id: `msg-${Date.now()}`,
@@ -680,9 +724,11 @@ export function processBotMessage(
       text: replyText,
       timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       header: '🚚 Metode Pengiriman',
+      footer: 'Pilih Kurir atau Ambil Sendiri',
       buttons: [
-        { id: 'del-1', label: '1. 🚚 Diantar Kurir', payload: '1' },
-        { id: 'del-2', label: '2. 🏪 Ambil Sendiri', payload: '2' },
+        { id: 'del-1', label: '1️⃣ 🚚 Diantar Kurir', payload: '1' },
+        { id: 'del-2', label: '2️⃣ 🏪 Ambil di Toko', payload: '2' },
+        { id: 'btn-0', label: '🔙 Menu Utama', payload: '0' },
       ],
     };
 
