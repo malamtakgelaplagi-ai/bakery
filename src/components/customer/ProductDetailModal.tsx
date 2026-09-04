@@ -60,6 +60,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <img
               src={displayImage}
               alt={product.name}
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent"></div>

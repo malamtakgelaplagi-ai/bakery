@@ -245,6 +245,7 @@ export const CustomerCartDrawer: React.FC<CustomerCartDrawerProps> = ({
                           '/products/bolu-pisang-original.jpg'
                         }
                         alt={item.product.name}
+                        referrerPolicy="no-referrer"
                         className="w-14 h-14 object-cover rounded-lg shrink-0 border border-stone-200"
                       />
                       <div className="flex-1 min-w-0">

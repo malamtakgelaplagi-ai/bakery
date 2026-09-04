@@ -362,6 +362,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
                           <img
                             src={prodImage}
                             alt={prod.name}
+                            referrerPolicy="no-referrer"
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                           />
                           <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">
@@ -536,11 +537,13 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
                     <img
                       src="/products/bolu-jadul-coklat.jpg"
                       alt="Bolu Jadul Coklat PUSAKA"
+                      referrerPolicy="no-referrer"
                       className="w-full h-44 object-cover rounded-2xl shadow-xs"
                     />
                     <img
                       src="/products/bolu-pisang-original.jpg"
                       alt="Bolu Pisang Original PUSAKA"
+                      referrerPolicy="no-referrer"
                       className="w-full h-44 object-cover rounded-2xl shadow-xs"
                     />
                   </div>
