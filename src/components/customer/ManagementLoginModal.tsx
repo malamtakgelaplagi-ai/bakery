@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import { UserAccount } from '../../types';
 import {
   X,
   Lock,
   KeyRound,
-  ShieldCheck,
-  ChefHat,
   AlertCircle,
-  CheckCircle2,
   HelpCircle,
   ArrowRight,
-  Sparkles,
 } from 'lucide-react';
 
 interface ManagementLoginModalProps {
@@ -78,8 +74,8 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
     }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!pin) {
       setErrorMessage('Silakan masukkan PIN 4 digit.');
       return;
@@ -87,11 +83,29 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
     verifyPin(pin, selectedUser);
   };
 
-  const handleQuickDemoLogin = (user: UserAccount) => {
-    setCurrentUser(user);
-    onSuccessLogin(user);
-    onClose();
-  };
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is in an input/textarea
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        handlePinInput(e.key);
+      } else if (e.key === 'Backspace') {
+        handleDeleteDigit();
+      } else if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleManualSubmit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, pin, selectedUser]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-xs animate-in fade-in duration-200">
@@ -179,15 +193,10 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin(selectedUser)}
-              className="px-2.5 py-1 text-[11px] font-bold bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg transition shadow-2xs flex items-center space-x-1"
-              title="Langsung masuk tanpa mengetik PIN (Mode Cepat)"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Masuk Cepat</span>
-            </button>
+            <div className="flex items-center space-x-1.5 text-[11px] text-stone-600 bg-stone-100 border border-stone-200 px-2.5 py-1.5 rounded-lg font-medium">
+              <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+              <span>Wajib PIN 4 Digit</span>
+            </div>
           </div>
 
           {/* Step 2: PIN Input */}
@@ -299,10 +308,14 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
 
           <button
             type="button"
-            onClick={() => handleQuickDemoLogin(selectedUser)}
-            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-sm"
+            onClick={() => handleManualSubmit()}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-sm ${
+              pin.length === 4
+                ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs cursor-pointer'
+                : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+            }`}
           >
-            <span>Buka Dashboard ({selectedUser.name.split(' ')[0]})</span>
+            <span>Verifikasi & Masuk Dashboard</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
