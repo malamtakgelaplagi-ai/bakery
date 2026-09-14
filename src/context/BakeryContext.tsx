@@ -729,7 +729,7 @@ const INITIAL_PRODUCTS: Product[] = [
     status: 'active',
     description: 'Bolu pisang klasik lembut khas PUSAKA dengan aroma rempah kayu manis dan pisang raja matang pohon alami.',
     shelfLifeDays: 4,
-    image: '/products/bolu-pisang-original.jpg',
+    image: 'https://drive.google.com/file/d/19PtnyGInjXCIFdv19kVgVpQUNGj-EXp9/view',
   },
   {
     id: 'prod-2',

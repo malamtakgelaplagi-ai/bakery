@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../../types';
 import { formatRupiah } from '../../utils/formatters';
+import { normalizeImageUrl } from '../../utils/imageUrl';
 import {
   X,
   ShoppingBag,
@@ -35,7 +36,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!isOpen || !product) return null;
 
   const fallbackImage = '/products/bolu-pisang-original.jpg';
-  const displayImage = product.image || fallbackImage;
+  const displayImage = normalizeImageUrl(product.image) || fallbackImage;
 
   const handleIncrement = () => setQuantity((prev) => prev + 1);
   const handleDecrement = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));

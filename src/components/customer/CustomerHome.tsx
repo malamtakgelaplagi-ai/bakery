@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import { Product } from '../../types';
 import { formatRupiah } from '../../utils/formatters';
+import { normalizeImageUrl } from '../../utils/imageUrl';
 import { CustomerHeader } from './CustomerHeader';
 import { ProductDetailModal } from './ProductDetailModal';
 import { CustomerCartDrawer, CartItem } from './CustomerCartDrawer';
@@ -346,7 +347,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {filteredProducts.map((prod) => {
                   const fallbackImg = '/products/bolu-pisang-original.jpg';
-                  const prodImage = prod.image || fallbackImg;
+                  const prodImage = normalizeImageUrl(prod.image) || fallbackImg;
 
                   return (
                     <div

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import { Product, OrderItem } from '../../types';
 import { formatRupiah } from '../../utils/formatters';
+import { normalizeImageUrl } from '../../utils/imageUrl';
 import {
   X,
   ShoppingBag,
@@ -241,7 +242,7 @@ export const CustomerCartDrawer: React.FC<CustomerCartDrawerProps> = ({
                     >
                       <img
                         src={
-                          item.product.image ||
+                          normalizeImageUrl(item.product.image) ||
                           '/products/bolu-pisang-original.jpg'
                         }
                         alt={item.product.name}

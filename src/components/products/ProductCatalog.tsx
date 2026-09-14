@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import { Product } from '../../types';
 import { formatRupiah } from '../../utils/formatters';
+import { normalizeImageUrl } from '../../utils/imageUrl';
 import { ProductFormModal } from './ProductFormModal';
 import {
   Package,
@@ -99,15 +100,32 @@ export const ProductCatalog: React.FC = () => {
             >
               <div className="p-5 space-y-4">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded">
-                        {prod.sku}
-                      </span>
-                      <span className="text-[11px] text-stone-400">{prod.category}</span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start space-x-3">
+                    {prod.image ? (
+                      <img
+                        src={normalizeImageUrl(prod.image)}
+                        alt={prod.name}
+                        referrerPolicy="no-referrer"
+                        className="w-12 h-12 object-cover rounded-lg border border-stone-200 shrink-0 bg-stone-100"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400 shrink-0">
+                        <Package className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded">
+                          {prod.sku}
+                        </span>
+                        <span className="text-[11px] text-stone-400">{prod.category}</span>
+                      </div>
+                      <h3 className="font-bold text-base text-stone-900 mt-1">{prod.name}</h3>
                     </div>
-                    <h3 className="font-bold text-base text-stone-900 mt-1">{prod.name}</h3>
                   </div>
 
                   <div className="flex items-center space-x-1">
