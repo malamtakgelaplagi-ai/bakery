@@ -23,14 +23,35 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
 }) => {
   const { users, currentUser, setCurrentUser, businessProfile } = useBakery();
 
-  const [selectedUser, setSelectedUser] = useState<UserAccount>(
-    currentUser || users[0]
-  );
+  // Ensure there is always a valid default user fallback
+  const defaultUser: UserAccount = currentUser || users[0] || {
+    id: 'user-owner',
+    name: 'Muhammad Ridla',
+    title: 'Owner & Pemilik Usaha',
+    email: 'owner@pusakabakery.id',
+    phone: '082115181105',
+    role: 'OWNER',
+    status: 'active',
+    pin: '1234',
+  };
+
+  const [selectedUser, setSelectedUser] = useState<UserAccount>(defaultUser);
   const [pin, setPin] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPinHelp, setShowPinHelp] = useState(false);
 
-  if (!isOpen) return null;
+  // Re-sync when modal opens or users change
+  useEffect(() => {
+    if (isOpen) {
+      const fallback = currentUser || users[0] || defaultUser;
+      setSelectedUser(fallback);
+      setPin('');
+      setErrorMessage(null);
+      setShowPinHelp(false);
+    }
+  }, [isOpen, currentUser, users]);
+
+  const activeUser = selectedUser || defaultUser;
 
   const handleSelectUser = (user: UserAccount) => {
     setSelectedUser(user);
@@ -46,7 +67,7 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
 
       // Auto-submit if 4 digits
       if (newPin.length === 4) {
-        verifyPin(newPin, selectedUser);
+        verifyPin(newPin, activeUser);
       }
     }
   };
@@ -80,7 +101,7 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
       setErrorMessage('Silakan masukkan PIN 4 digit.');
       return;
     }
-    verifyPin(pin, selectedUser);
+    verifyPin(pin, activeUser);
   };
 
   useEffect(() => {
@@ -105,7 +126,10 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, pin, selectedUser]);
+  }, [isOpen, pin, activeUser]);
+
+  // ALL HOOKS MUST BE CALLED BEFORE THIS EARLY RETURN
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-xs animate-in fade-in duration-200">
@@ -144,7 +168,7 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {users.map((u) => {
-                const isSelected = selectedUser.id === u.id;
+                const isSelected = activeUser.id === u.id;
                 return (
                   <button
                     key={u.id}
@@ -181,14 +205,14 @@ export const ManagementLoginModal: React.FC<ManagementLoginModalProps> = ({
           <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
               <div className="w-9 h-9 rounded-full bg-stone-800 text-amber-400 flex items-center justify-center font-bold text-xs">
-                {selectedUser.name.slice(0, 2).toUpperCase()}
+                {activeUser.name.slice(0, 2).toUpperCase()}
               </div>
               <div>
                 <div className="font-bold text-xs text-stone-900">
-                  {selectedUser.name}
+                  {activeUser.name}
                 </div>
                 <div className="text-[11px] text-stone-500">
-                  Hak Akses: <strong className="text-amber-700 font-semibold">{selectedUser.role}</strong> ({selectedUser.title})
+                  Hak Akses: <strong className="text-amber-700 font-semibold">{activeUser.role}</strong> ({activeUser.title})
                 </div>
               </div>
             </div>

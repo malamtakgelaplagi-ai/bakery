@@ -18,6 +18,7 @@ import { NewOrderModal } from './components/pos/NewOrderModal';
 import { NewProductionModal } from './components/production/NewProductionModal';
 import { CustomerHome } from './components/customer/CustomerHome';
 import { ManagementLoginModal } from './components/customer/ManagementLoginModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   // View mode: 'customer' (Etalase Konsumen & Profil) vs 'management' (Dashboard Bisnis)
@@ -186,9 +187,11 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <BakeryProvider>
-      <AppContent />
-    </BakeryProvider>
+    <ErrorBoundary>
+      <BakeryProvider>
+        <AppContent />
+      </BakeryProvider>
+    </ErrorBoundary>
   );
 }
 
