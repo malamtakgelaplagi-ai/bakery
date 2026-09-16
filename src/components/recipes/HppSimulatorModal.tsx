@@ -22,9 +22,12 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
   if (!isOpen) return null;
 
   const totalHpp = version.totalHppPerUnit;
+  const isBeverage =
+    recipe?.category?.toLowerCase().includes('kopi') ||
+    recipe?.category?.toLowerCase().includes('minuman');
 
   // Standard margin tiers
-  const tiers = [30, 40, 50, 60];
+  const tiers = isBeverage ? [40, 50, 55, 60] : [30, 40, 50, 60];
 
   // Calculated price from margin: Price = HPP / (1 - Margin%)
   const calculatePriceFromMargin = (marginPct: number) => {
@@ -65,12 +68,14 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
               <div>
                 <h4 className="font-bold text-sm text-stone-900">{recipe.name}</h4>
                 <p className="text-stone-500 text-[11px]">
-                  Versi {version.versionNumber} • Target Adonan: {version.targetBatterWeightGram}g → Matang: ±{version.targetBakedWeightGram}g
+                  {isBeverage
+                    ? `Versi ${version.versionNumber} • Takaran Resep: ±${version.targetBatterWeightGram}ml • Porsi: 1 Cup Dingin`
+                    : `Versi ${version.versionNumber} • Target Adonan: ${version.targetBatterWeightGram}g → Matang: ±${version.targetBakedWeightGram}g`}
                 </p>
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-stone-400 block uppercase font-bold">
-                  HPP Modal Pokok
+                  HPP Pokok / {isBeverage ? 'Cup' : 'Pcs'}
                 </span>
                 <span className="text-base font-extrabold text-stone-900 font-mono">
                   {formatRupiah(totalHpp)}
@@ -87,13 +92,17 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
                 </span>
               </div>
               <div className="bg-white p-2 rounded border border-stone-200">
-                <span className="text-stone-400 block text-[10px]">Kemasan & Box</span>
+                <span className="text-stone-400 block text-[10px]">
+                  {isBeverage ? 'Cup, Lid & Sedotan' : 'Kemasan & Box'}
+                </span>
                 <span className="font-bold text-stone-800">
                   {formatRupiah(version.totalPackagingCost)}
                 </span>
               </div>
               <div className="bg-white p-2 rounded border border-stone-200">
-                <span className="text-stone-400 block text-[10px]">Gas, Listrik & Baker</span>
+                <span className="text-stone-400 block text-[10px]">
+                  {isBeverage ? 'Seduh & Operasional' : 'Gas, Listrik & Baker'}
+                </span>
                 <span className="font-bold text-stone-800">
                   {formatRupiah(version.totalDirectCost)}
                 </span>
@@ -104,7 +113,9 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
           {/* Standard Margin Tiers */}
           <div>
             <label className="block font-bold text-stone-800 mb-2">
-              Rekomendasi Berdasarkan Target Margin Standar Usaha Bakery
+              {isBeverage
+                ? 'Rekomendasi Margin Standar Bisnis Kopi & Minuman'
+                : 'Rekomendasi Berdasarkan Target Margin Standar Usaha Bakery'}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {tiers.map((m) => {
@@ -133,7 +144,7 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
                       </div>
                     </div>
                     <div className="text-[10px] text-emerald-700 font-semibold mt-2 pt-1 border-t border-stone-100">
-                      Laba: +{formatRupiah(laba)}/pcs
+                      Laba: +{formatRupiah(laba)}/{isBeverage ? 'cup' : 'pcs'}
                     </div>
                   </button>
                 );
@@ -181,7 +192,9 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-stone-400 text-[11px]">Laba Kotor / Pcs:</span>
+                  <span className="text-stone-400 text-[11px]">
+                    Laba Kotor / {isBeverage ? 'Cup' : 'Pcs'}:
+                  </span>
                   <span className="font-bold text-white text-xs">
                     {formatRupiah(profitPerPcs)}
                   </span>
@@ -190,7 +203,7 @@ export const HppSimulatorModal: React.FC<HppSimulatorModalProps> = ({
             </div>
 
             <div className="text-[11px] text-stone-300 border-t border-stone-800 pt-2 flex items-center justify-between">
-              <span>Simulasi 100 Loyang Terjual:</span>
+              <span>Simulasi 100 {isBeverage ? 'Cup' : 'Loyang'} Terjual:</span>
               <span className="font-bold text-amber-400">
                 Omzet: {formatRupiah(customSellingPrice * 100)} | Profit: {formatRupiah(profitPerPcs * 100)}
               </span>
