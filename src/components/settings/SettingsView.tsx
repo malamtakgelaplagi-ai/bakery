@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBakery } from '../../context/BakeryContext';
 import { BusinessProfile } from '../../types';
 import { GoogleSheetsManager } from '../sheets/GoogleSheetsManager';
+import { DatabaseManager } from './DatabaseManager';
 import { StaffManager } from './StaffManager';
 import {
   Store,
@@ -49,13 +50,16 @@ export const SettingsView: React.FC = () => {
             </span>
           </div>
           <h2 className="text-xl font-bold text-stone-900 mt-1">
-            Profil Usaha, Staff Multi-Role & Google Sheets
+            Profil Usaha, Database MySQL, Staff & Google Sheets
           </h2>
           <p className="text-xs text-stone-500 mt-0.5">
-            Konfigurasi informasi toko untuk nota & WhatsApp, kelola akun staff (Owner, Admin, Produksi, Kasir, Supervisor), serta sinkronisasi database.
+            Konfigurasi database MySQL (phpMyAdmin), profil nota & WhatsApp, kelola akun staff, dan integrasi Google Sheets.
           </p>
         </div>
       </div>
+
+      {/* MySQL / MariaDB Database Manager */}
+      <DatabaseManager />
 
       {/* Staff & Multi-Role Manager */}
       <StaffManager />

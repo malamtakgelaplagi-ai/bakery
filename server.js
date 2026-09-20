@@ -7,6 +7,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
+// Load .env variables synchronously
+try {
+  const dotenv = require('dotenv');
+  dotenv.config({ path: path.join(__dirname, '.env') });
+} catch (e) {
+  // ignore if dotenv is not present
+}
+
 const bundledPath = path.join(__dirname, 'dist', 'server.cjs');
 
 // If dist/server.cjs does not exist, run build first

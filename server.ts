@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { serverStore } from './server/dataStore';
+import { updateMySQLCredentials } from './server/mysqlDb';
 import { baileysManager } from './server/baileysService';
 import {
   processBotMessage,
@@ -52,12 +54,46 @@ async function startServer() {
     }
   });
 
+  app.post('/api/database/config', async (req, res) => {
+    try {
+      const { host, port, user, password, database } = req.body;
+      const testResult = await updateMySQLCredentials({ host, port, user, password, database });
+      if (!testResult.success) {
+        return res.status(400).json(testResult);
+      }
+
+      // Sync all current data to the newly configured MySQL
+      const syncResult = await serverStore.syncAllToMySQL();
+      res.json({
+        success: true,
+        message: testResult.message + ' ' + syncResult.message,
+        sync: syncResult,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to update database config' });
+    }
+  });
+
   app.post('/api/database/migrate', async (req, res) => {
     try {
       const result = await serverStore.syncAllToMySQL();
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err?.message || 'Migration failed' });
+    }
+  });
+
+  app.get('/api/database/schema-sql', (req, res) => {
+    try {
+      const schemaPath = path.join(process.cwd(), 'schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.sendFile(schemaPath);
+      } else {
+        res.status(404).send('-- schema.sql not found on server');
+      }
+    } catch (err: any) {
+      res.status(500).send('-- Failed to read schema.sql: ' + (err?.message || err));
     }
   });
 

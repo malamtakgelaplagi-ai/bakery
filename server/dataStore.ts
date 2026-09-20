@@ -273,6 +273,7 @@ class DataStore {
     mode: 'MYSQL' | 'LOCAL_JSON';
     isMySQLConfigured: boolean;
     connection: any;
+    config?: { host: string; port: number; database: string; user: string; hasPassword: boolean };
     counts: { products: number; orders: number; customers: number; sessions: number };
   }> {
     const conn = await checkMySQLConnection();
@@ -280,6 +281,13 @@ class DataStore {
       mode: conn.connected ? 'MYSQL' : 'LOCAL_JSON',
       isMySQLConfigured: isMySQLConfigured(),
       connection: conn,
+      config: {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+        database: process.env.DB_NAME || '',
+        user: process.env.DB_USER || '',
+        hasPassword: !!process.env.DB_PASSWORD,
+      },
       counts: {
         products: this.db.products.length,
         orders: this.db.orders.length,

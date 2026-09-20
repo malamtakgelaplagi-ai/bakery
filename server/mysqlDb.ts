@@ -1,4 +1,6 @@
 import mysql, { Pool, PoolOptions } from 'mysql2/promise';
+import fs from 'fs';
+import path from 'path';
 import { Product, BusinessProfile, Order, Customer, WhatsAppSession } from '../src/types';
 
 let pool: Pool | null = null;
@@ -62,6 +64,97 @@ export async function checkMySQLConnection(): Promise<{ connected: boolean; mess
       message: `Gagal terhubung ke MySQL: ${err?.message || err}`,
       host: process.env.DB_HOST || 'localhost',
       database: process.env.DB_NAME,
+    };
+  }
+}
+
+export async function updateMySQLCredentials(config: {
+  host?: string;
+  port?: number;
+  user: string;
+  password?: string;
+  database: string;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const host = config.host?.trim() || 'localhost';
+    const port = config.port ? Number(config.port) : 3306;
+    const user = config.user?.trim();
+    const password = config.password || '';
+    const database = config.database?.trim();
+
+    if (!user || !database) {
+      return {
+        success: false,
+        message: 'Nama database (DB_NAME) dan nama user (DB_USER) wajib diisi.',
+      };
+    }
+
+    // 1. Test connection
+    const testConn = await mysql.createConnection({
+      host,
+      port,
+      user,
+      password,
+      database,
+      connectTimeout: 7000,
+    });
+    await testConn.query('SELECT 1');
+    await testConn.end();
+
+    // 2. Connection passed! Update process.env
+    process.env.DB_HOST = host;
+    process.env.DB_PORT = port.toString();
+    process.env.DB_USER = user;
+    process.env.DB_PASSWORD = password;
+    process.env.DB_NAME = database;
+
+    // 3. Reset existing pool
+    if (pool) {
+      await pool.end().catch(() => {});
+      pool = null;
+    }
+
+    // 4. Update .env file in root
+    try {
+      const envPath = path.join(process.cwd(), '.env');
+      let envContent = '';
+      if (fs.existsSync(envPath)) {
+        envContent = fs.readFileSync(envPath, 'utf-8');
+      }
+
+      const updateOrAppend = (key: string, val: string) => {
+        const regex = new RegExp(`^${key}=.*$`, 'm');
+        if (regex.test(envContent)) {
+          envContent = envContent.replace(regex, `${key}=${val}`);
+        } else {
+          envContent = envContent.trim() + `\n${key}=${val}\n`;
+        }
+      };
+
+      updateOrAppend('DB_HOST', host);
+      updateOrAppend('DB_PORT', port.toString());
+      updateOrAppend('DB_USER', user);
+      updateOrAppend('DB_PASSWORD', password);
+      updateOrAppend('DB_NAME', database);
+
+      fs.writeFileSync(envPath, envContent.trim() + '\n', 'utf-8');
+      console.log('[MySQL] Saved updated DB credentials to .env file');
+    } catch (e: any) {
+      console.warn('[MySQL] Could not write to .env file:', e?.message || e);
+    }
+
+    // 5. Initialize tables immediately
+    await initMySQLSchema();
+    isConnected = true;
+
+    return {
+      success: true,
+      message: `Sukses terhubung ke database "${database}" di ${host}:${port}! Tabel-tabel telah diverifikasi/dibuat.`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `Gagal terhubung ke MySQL: ${err?.message || err}`,
     };
   }
 }
