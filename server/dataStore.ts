@@ -1,6 +1,21 @@
 import fs from 'fs';
 import path from 'path';
 import { Product, BusinessProfile, Order, Customer, WhatsAppSession } from '../src/types';
+import {
+  isMySQLConfigured,
+  checkMySQLConnection,
+  initMySQLSchema,
+  mysqlGetProfile,
+  mysqlSaveProfile,
+  mysqlGetProducts,
+  mysqlSaveProduct,
+  mysqlGetOrders,
+  mysqlSaveOrder,
+  mysqlGetCustomers,
+  mysqlSaveCustomer,
+  mysqlGetWhatsAppSessions,
+  mysqlSaveWhatsAppSession,
+} from './mysqlDb';
 
 export interface ServerDatabase {
   businessProfile: BusinessProfile;
@@ -160,9 +175,118 @@ const INITIAL_CUSTOMERS: Customer[] = [
 
 class DataStore {
   private db: ServerDatabase;
+  private isMySQLEnabled: boolean = false;
 
   constructor() {
     this.db = this.loadDatabase();
+    // Fire background initialization
+    this.initDatabase().catch((err) => {
+      console.warn('[DataStore] Database init background notice:', err?.message || err);
+    });
+  }
+
+  public async initDatabase(): Promise<void> {
+    if (!isMySQLConfigured()) {
+      console.log('[DataStore] MySQL credentials not detected. Running on local JSON storage mode.');
+      return;
+    }
+
+    try {
+      const conn = await checkMySQLConnection();
+      if (!conn.connected) {
+        console.warn('[DataStore] MySQL not reachable:', conn.message);
+        return;
+      }
+
+      console.log(`[DataStore] Successfully connected to MySQL at ${conn.host}/${conn.database}`);
+      await initMySQLSchema();
+      this.isMySQLEnabled = true;
+
+      // Check if products exist in MySQL
+      const mysqlProducts = await mysqlGetProducts();
+      if (mysqlProducts && mysqlProducts.length > 0) {
+        console.log(`[DataStore] Loaded ${mysqlProducts.length} products from MySQL.`);
+        this.db.products = mysqlProducts;
+
+        // Load profile
+        const profile = await mysqlGetProfile();
+        if (profile) this.db.businessProfile = profile;
+
+        // Load orders
+        const orders = await mysqlGetOrders();
+        if (orders) this.db.orders = orders;
+
+        // Load customers
+        const customers = await mysqlGetCustomers();
+        if (customers) this.db.customers = customers;
+
+        // Load WhatsApp sessions
+        const sessions = await mysqlGetWhatsAppSessions();
+        if (sessions) this.db.whatsappSessions = sessions;
+      } else {
+        // First-time migration: Push current JSON initial data to MySQL
+        console.log('[DataStore] MySQL is empty. Seeding initial data from JSON to MySQL...');
+        await this.syncAllToMySQL();
+      }
+    } catch (err) {
+      console.error('[DataStore] Error during MySQL initialization:', err);
+    }
+  }
+
+  public async syncAllToMySQL(): Promise<{ success: boolean; message: string; counts?: any }> {
+    try {
+      await initMySQLSchema();
+      await mysqlSaveProfile(this.db.businessProfile);
+
+      for (const prod of this.db.products) {
+        await mysqlSaveProduct(prod);
+      }
+      for (const cust of this.db.customers) {
+        await mysqlSaveCustomer(cust);
+      }
+      for (const ord of this.db.orders) {
+        await mysqlSaveOrder(ord);
+      }
+      for (const sess of this.db.whatsappSessions) {
+        await mysqlSaveWhatsAppSession(sess);
+      }
+
+      this.isMySQLEnabled = true;
+      return {
+        success: true,
+        message: 'Berhasil menyinkronkan seluruh data PUSAKA Bakery ke MySQL!',
+        counts: {
+          products: this.db.products.length,
+          customers: this.db.customers.length,
+          orders: this.db.orders.length,
+        },
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Gagal migrasi ke MySQL: ${err?.message || err}`,
+      };
+    }
+  }
+
+  public async getDatabaseStatus(): Promise<{
+    mode: 'MYSQL' | 'LOCAL_JSON';
+    isMySQLConfigured: boolean;
+    connection: any;
+    counts: { products: number; orders: number; customers: number; sessions: number };
+  }> {
+    const conn = await checkMySQLConnection();
+    return {
+      mode: conn.connected ? 'MYSQL' : 'LOCAL_JSON',
+      isMySQLConfigured: isMySQLConfigured(),
+      connection: conn,
+      counts: {
+        products: this.db.products.length,
+        orders: this.db.orders.length,
+        customers: this.db.customers.length,
+        sessions: this.db.whatsappSessions.length,
+      },
+    };
   }
 
   private loadDatabase(): ServerDatabase {
@@ -230,6 +354,9 @@ class DataStore {
   public updateBusinessProfile(patch: Partial<BusinessProfile>): BusinessProfile {
     this.db.businessProfile = { ...this.db.businessProfile, ...patch };
     this.saveDatabase(this.db);
+    mysqlSaveProfile(this.db.businessProfile).catch((err) => {
+      console.warn('[DataStore] Error persisting profile to MySQL:', err?.message || err);
+    });
     return this.db.businessProfile;
   }
 
@@ -249,6 +376,9 @@ class DataStore {
     if (idx === -1) return null;
     this.db.products[idx] = { ...this.db.products[idx], ...patch };
     this.saveDatabase(this.db);
+    mysqlSaveProduct(this.db.products[idx]).catch((err) => {
+      console.warn('[DataStore] Error persisting product to MySQL:', err?.message || err);
+    });
     return this.db.products[idx];
   }
 
@@ -349,6 +479,28 @@ class DataStore {
     });
 
     this.saveDatabase(this.db);
+
+    // Async MySQL persistence for Order and updated Customer / Products
+    mysqlSaveOrder(newOrder).catch((err) => {
+      console.warn('[DataStore] Error saving order to MySQL:', err?.message || err);
+    });
+    if (phone) {
+      const updatedCust = this.db.customers.find((c) => (c.phone || '').replace(/[^0-9]/g, '') === phone);
+      if (updatedCust) {
+        mysqlSaveCustomer(updatedCust).catch((err) => {
+          console.warn('[DataStore] Error saving customer to MySQL:', err?.message || err);
+        });
+      }
+    }
+    if (Array.isArray(newOrder.items)) {
+      newOrder.items.forEach((item) => {
+        const prod = this.db.products.find((p) => p.id === item.productId);
+        if (prod) {
+          mysqlSaveProduct(prod).catch(() => {});
+        }
+      });
+    }
+
     return newOrder;
   }
 
@@ -357,6 +509,9 @@ class DataStore {
     if (idx === -1) return null;
     this.db.orders[idx] = { ...this.db.orders[idx], ...patch };
     this.saveDatabase(this.db);
+    mysqlSaveOrder(this.db.orders[idx]).catch((err) => {
+      console.warn('[DataStore] Error updating order status in MySQL:', err?.message || err);
+    });
     return this.db.orders[idx];
   }
 
@@ -382,6 +537,9 @@ class DataStore {
       this.db.whatsappSessions.unshift(session);
     }
     this.saveDatabase(this.db);
+    mysqlSaveWhatsAppSession(session).catch((err) => {
+      console.warn('[DataStore] Error saving whatsapp session to MySQL:', err?.message || err);
+    });
     return session;
   }
 }

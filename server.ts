@@ -34,13 +34,31 @@ async function startServer() {
   // REST API ENDPOINTS
   // =========================================================================
 
-  // 1. Health Check
+  // 1. Health & Database Check
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
       service: 'PUSAKA Bakery API & WhatsApp Webhook Engine',
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get('/api/database/status', async (req, res) => {
+    try {
+      const status = await serverStore.getDatabaseStatus();
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to check database status' });
+    }
+  });
+
+  app.post('/api/database/migrate', async (req, res) => {
+    try {
+      const result = await serverStore.syncAllToMySQL();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Migration failed' });
+    }
   });
 
   // 2. Business Profile Endpoints
